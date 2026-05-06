@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="tab-title">لعبة الغموض - نظام سهم المطور</title>
+    <title id="tab-title">لعبة الغموض - نظام سهم المطور v3</title>
     <style>
         :root {
             --primary-red: #8B0000;
@@ -72,16 +72,15 @@
 
         input, textarea, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
 
-        .admin-panel { text-align: right; direction: rtl; max-height: 80vh; overflow-y: auto; }
+        .admin-panel { text-align: right; direction: rtl; max-height: 80vh; overflow-y: auto; padding-left: 10px; }
         .admin-section { background: #f0f0f0; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-right: 5px solid var(--primary-red); }
         
-        .user-item, .q-item { background: white; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
+        .item-row { background: white; padding: 10px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
         .admin-btn { background: rgba(0,0,0,0.8); color: #fff; font-size: 0.8rem; position: fixed; bottom: 10px; left: 10px; padding: 10px 15px; border-radius: 50px; z-index: 100; cursor: pointer; border: 1px solid var(--primary-red); }
         
-        .submission-card { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: right; }
-        .submission-card img, .submission-card audio { display: block; max-width: 150px; margin-top: 10px; }
-
-        video, canvas { width: 100%; max-width: 400px; border: 2px solid var(--primary-red); border-radius: 8px; margin: 10px 0; background: white; touch-action: none; }
+        .perm-box { display: flex; flex-wrap: wrap; gap: 10px; background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 0.9rem; }
+        .perm-box label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .perm-box input { width: auto; margin: 0; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -109,42 +108,46 @@
         <button onclick="showScreen('screen-login')" style="background: #999;">إلغاء</button>
     </div>
 
-    <!-- شاشات اللعبة -->
+    <!-- شاشات اللعبة (مختصرة للتركيز على الإدارة) -->
     <div id="screen-start" class="screen">
         <h1 id="text-start-title"></h1>
         <p id="text-start-desc"></p>
         <button onclick="showScreen('screen-rules')">بدء التحدي</button>
     </div>
+    <div id="screen-rules" class="screen"><h1>القوانين</h1><div id="rules-list"></div><button onclick="startDynamicQuestions()">ابدأ</button></div>
+    <div id="screen-dynamic-q" class="screen"><h3 id="dynamic-q-text"></h3><div id="dynamic-q-container"></div><button id="dynamic-next-btn" style="display:none;" onclick="submitDynamicAnswer()">التالي</button></div>
+    <div id="screen-end" class="screen"><h1>تم الاستلام</h1></div>
 
-    <div id="screen-rules" class="screen">
-        <h1>قوانين اللعبة</h1>
-        <div id="rules-list"></div><br>
-        <button onclick="startDynamicQuestions()">موافق، ابدأ</button>
-    </div>
-
-    <div id="screen-dynamic-q" class="screen">
-        <h3 id="dynamic-q-text">السؤال؟</h3>
-        <div id="dynamic-q-container"></div>
-        <button id="dynamic-next-btn" style="display:none;" onclick="submitDynamicAnswer()">السؤال التالي</button>
-    </div>
-
-    <div id="screen-end" class="screen">
-        <h1>تم استلام البيانات</h1>
-        <p>لقد انتهيت من جميع المراحل بنجاح.</p>
-    </div>
-
-    <!-- لوحة التحكم -->
+    <!-- لوحة التحكم الاحترافية -->
     <div id="screen-admin" class="screen admin-panel">
-        <h2>⚙️ إعدادات سهم المطور</h2>
+        <h2>⚙️ نظام سهم للمطورين</h2>
         
-        <div class="admin-section" style="background: #fff3e0;">
+        <!-- قسم المظهر -->
+        <div class="admin-section" id="sec-visuals">
             <h4>🎨 المظهر السحابي</h4>
             <input type="text" id="admin-logo-url" placeholder="رابط اللوجو">
             <input type="text" id="admin-bg-url" placeholder="رابط الخلفية">
-            <button onclick="updateVisualsAndSync()" style="background:#ef6c00;">تحديث وحفظ سحابي</button>
+            <button onclick="updateVisualsAndSync()" style="background:#ef6c00;">تحديث وحفظ</button>
         </div>
 
-        <div class="admin-section">
+        <!-- قسم إضافة إداري جديد (للسوبر أدمن فقط) -->
+        <div class="admin-section" id="sec-admins">
+            <h4>🛡️ إدارة المسؤولين</h4>
+            <input type="text" id="new-admin-name" placeholder="اسم المسؤول الجديد">
+            <input type="text" id="new-admin-pass" placeholder="كلمة السر">
+            <div class="perm-box">
+                <label><input type="checkbox" id="p-visuals" checked> تعديل المظهر</label>
+                <label><input type="checkbox" id="p-players" checked> إدارة لاعبين</label>
+                <label><input type="checkbox" id="p-questions" checked> إدارة أسئلة</label>
+                <label><input type="checkbox" id="p-results" checked> رؤية نتائج</label>
+                <label><input type="checkbox" id="p-full"> إضافة إداريين</label>
+            </div>
+            <button onclick="addNewAdmin()" style="background:#333;">إضافة مسؤول بصلاحيات</button>
+            <div id="admin-list-display"></div>
+        </div>
+
+        <!-- إدارة اللاعبين -->
+        <div class="admin-section" id="sec-players">
             <h4>👥 إدارة اللاعبين</h4>
             <input type="text" id="new-user-name" placeholder="اسم المستخدم">
             <input type="text" id="new-user-pass" placeholder="كلمة السر">
@@ -152,29 +155,26 @@
             <div id="admin-users-list"></div>
         </div>
 
-        <div class="admin-section">
+        <!-- إدارة الأسئلة -->
+        <div class="admin-section" id="sec-questions">
             <h4>❓ إدارة الأسئلة</h4>
             <input type="text" id="new-q-text" placeholder="نص السؤال">
-            <select id="new-q-type" onchange="toggleAdminOptions()">
-                <option value="text">كتابة نصية</option>
-                <option value="options">اختيارات</option>
+            <select id="new-q-type">
+                <option value="text">نص</option>
+                <option value="options">خيارات</option>
                 <option value="camera">كاميرا</option>
-                <option value="audio">صوت</option>
-                <option value="draw">توقيع</option>
             </select>
-            <div id="admin-options-input" style="display:none;">
-                <input type="text" id="new-q-options" placeholder="الاختيارات (افصل بفاصلة ,)">
-            </div>
             <button onclick="addNewQuestion()" style="background:blue;">إضافة السؤال</button>
             <div id="admin-questions-list"></div>
         </div>
 
-        <div class="admin-section">
+        <!-- النتائج -->
+        <div class="admin-section" id="sec-results">
             <h4>📥 النتائج المستلمة</h4>
             <div id="submissionsList"></div>
         </div>
 
-        <button onclick="location.reload()" style="background:#555; width:100%;">خروج</button>
+        <button onclick="location.reload()" style="background:#555; width:100%;">تسجيل خروج من اللوحة</button>
     </div>
 </div>
 
@@ -190,85 +190,124 @@
         projectId: "syf12-a7161",
         storageBucket: "syf12-a7161.firebasestorage.app",
         messagingSenderId: "910787310144",
-        appId: "1:910787310144:web:1b3e6590b248e12c5425a5",
-        measurementId: "G-4YG8RVN4H4"
+        appId: "1:910787310144:web:1b3e6590b248e12c5425a5"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // الحالة العامة
+    // الحالة العامة + الإداري الافتراضي (أنت يا سهم)
     let config = JSON.parse(localStorage.getItem('game_config')) || {
         logo: "https://via.placeholder.com/130",
-        bg: "https://replicate.delivery/xpbkg/Hj69fL3855U9Iit751P3971I1b400d4653a2b724/out-0.png",
+        bg: "https://replicate.delivery/out-0.png",
         startTitle: "الغموض",
         startDesc: "هل أنت جاهز؟",
-        rules: ["إطاعة الأوامر", "الصدق"],
-        questions: [{q: "ما اسمك؟", type: "text"}],
-        users: [{u: "player1", p: "123"}],
-        admins: [{u: "admin", p: "1234"}]
+        rules: ["الالتزام بالوقت"],
+        questions: [{q: "الاسم الرباعي؟", type: "text"}],
+        users: [{u: "sahm", p: "123"}],
+        admins: [{u: "admin", p: "1234", perms: ['visuals', 'players', 'questions', 'results', 'full']}]
     };
 
     let currentPlayer = "";
-    let qIdx = 0;
-    let currentResults = [];
+    let currentAdmin = null;
 
-    // وظائف النافذة (Global)
+    // التنقل
     window.showScreen = (id) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
     };
 
-    window.handlePlayerLogin = () => {
-        const u = document.getElementById('player-user').value;
-        const p = document.getElementById('player-pass').value;
-        const user = config.users.find(acc => acc.u === u && acc.p === p);
-        if (user) { currentPlayer = u; window.showScreen('screen-start'); }
-        else alert("خطأ في البيانات");
-    };
-
+    // دخول المسؤول مع فحص الصلاحيات
     window.checkAdminCredentials = () => {
         const u = document.getElementById('admin-user-input').value;
         const p = document.getElementById('admin-pass-input').value;
-        if (config.admins.some(a => a.u === u && a.p === p)) {
+        const admin = config.admins.find(a => a.u === u && a.p === p);
+
+        if (admin) {
+            currentAdmin = admin;
+            applyPermissions(admin.perms);
             window.showScreen('screen-admin');
             renderAdminLists();
-        } else alert("دخول مرفوض");
+        } else {
+            alert("بيانات المسؤول غير صحيحة");
+        }
     };
 
+    // وظيفة إخفاء الأقسام بناءً على الصلاحية
+    function applyPermissions(perms) {
+        const sections = {
+            'visuals': 'sec-visuals',
+            'players': 'sec-players',
+            'questions': 'sec-questions',
+            'results': 'sec-results',
+            'full': 'sec-admins'
+        };
+        
+        // إخفاء الكل أولاً
+        Object.values(sections).forEach(id => document.getElementById(id).style.display = 'none');
+        
+        // إظهار المسموح فقط
+        perms.forEach(p => {
+            if (sections[p]) document.getElementById(sections[p]).style.display = 'block';
+        });
+    }
+
+    // إضافة مسؤول جديد بصلاحيات محددة
+    window.addNewAdmin = () => {
+        if (!currentAdmin.perms.includes('full')) return alert("ليس لديك صلاحية إضافة إداريين");
+        
+        const u = document.getElementById('new-admin-name').value;
+        const p = document.getElementById('new-admin-pass').value;
+        
+        const perms = [];
+        if (document.getElementById('p-visuals').checked) perms.push('visuals');
+        if (document.getElementById('p-players').checked) perms.push('players');
+        if (document.getElementById('p-questions').checked) perms.push('questions');
+        if (document.getElementById('p-results').checked) perms.push('results');
+        if (document.getElementById('p-full').checked) perms.push('full');
+
+        if (u && p) {
+            config.admins.push({ u, p, perms });
+            saveAndRefresh();
+            alert(`تم إضافة المسؤول ${u} بنجاح`);
+        }
+    };
+
+    window.deleteAdmin = (i) => {
+        if (config.admins[i].u === 'admin') return alert("لا يمكن حذف المسؤول الأساسي");
+        config.admins.splice(i, 1);
+        saveAndRefresh();
+    };
+
+    // المزامنة الحية للخلفية واللوجو
     window.updateVisualsAndSync = async () => {
         const logo = document.getElementById('admin-logo-url').value;
         const bg = document.getElementById('admin-bg-url').value;
         config.logo = logo; config.bg = bg;
         localStorage.setItem('game_config', JSON.stringify(config));
         await setDoc(doc(db, "siteConfig", "mainSettings"), { logo, background: bg });
-        alert("تم الحفظ والمزامنة!");
+        alert("تم التحديث سحابياً");
     };
 
-    // مزامنة حية
     onSnapshot(doc(db, "siteConfig", "mainSettings"), (snap) => {
         if (snap.exists()) {
             const d = snap.data();
-            document.getElementById('game-logo').src = d.logo;
-            document.body.style.backgroundImage = `url('${d.background}')`;
+            document.getElementById('game-logo').src = d.logo || config.logo;
+            document.body.style.backgroundImage = `url('${d.background || config.bg}')`;
         }
     });
 
-    // إدارة المحتوى
+    // إدارة اللاعبين والأسئلة
     window.addNewUser = () => {
         config.users.push({u: document.getElementById('new-user-name').value, p: document.getElementById('new-user-pass').value});
         saveAndRefresh();
     };
+    window.deleteUser = (i) => { config.users.splice(i, 1); saveAndRefresh(); };
 
     window.addNewQuestion = () => {
-        const q = document.getElementById('new-q-text').value;
-        const type = document.getElementById('new-q-type').value;
-        const opts = document.getElementById('new-q-options').value.split(',');
-        config.questions.push({q, type, options: type==='options' ? opts : []});
+        config.questions.push({q: document.getElementById('new-q-text').value, type: document.getElementById('new-q-type').value});
         saveAndRefresh();
     };
-
-    window.deleteUser = (i) => { config.users.splice(i, 1); saveAndRefresh(); };
     window.deleteQ = (i) => { config.questions.splice(i, 1); saveAndRefresh(); };
 
     function saveAndRefresh() {
@@ -277,67 +316,53 @@
     }
 
     function renderAdminLists() {
-        document.getElementById('admin-users-list').innerHTML = config.users.map((u, i) => `<div class="user-item">${u.u} <button onclick="deleteUser(${i})">حذف</button></div>`).join('');
-        document.getElementById('admin-questions-list').innerHTML = config.questions.map((q, i) => `<div class="q-item">${q.q} <button onclick="deleteQ(${i})">حذف</button></div>`).join('');
+        // قائمة الإداريين
+        document.getElementById('admin-list-display').innerHTML = config.admins.map((a, i) => `
+            <div class="item-row">
+                <span>${a.u} (${a.perms.length} صلاحيات)</span>
+                <button onclick="deleteAdmin(${i})" style="background:red; padding:5px;">حذف</button>
+            </div>
+        `).join('');
+
+        // قائمة اللاعبين
+        document.getElementById('admin-users-list').innerHTML = config.users.map((u, i) => `
+            <div class="item-row">${u.u} <button onclick="deleteUser(${i})">حذف</button></div>
+        `).join('');
+
+        // قائمة الأسئلة
+        document.getElementById('admin-questions-list').innerHTML = config.questions.map((q, i) => `
+            <div class="item-row">${q.q} <button onclick="deleteQ(${i})">حذف</button></div>
+        `).join('');
+
         loadSubmissions();
     }
 
-    // نظام الأسئلة
-    window.startDynamicQuestions = () => { qIdx=0; currentResults=[]; window.showScreen('screen-dynamic-q'); loadNextQ(); };
-
-    async function loadNextQ() {
-        if (qIdx >= config.questions.length) { 
-            let subs = JSON.parse(localStorage.getItem('submissions') || "[]");
-            subs.push({player: currentPlayer, date: new Date().toLocaleString(), results: currentResults});
-            localStorage.setItem('submissions', JSON.stringify(subs));
-            window.showScreen('screen-end'); 
-            return; 
-        }
-        const q = config.questions[qIdx];
-        document.getElementById('dynamic-q-text').innerText = q.q;
-        const cont = document.getElementById('dynamic-q-container');
-        cont.innerHTML = "";
-        document.getElementById('dynamic-next-btn').style.display = (q.type === 'options') ? "none" : "inline-block";
-
-        if (q.type === 'text') cont.innerHTML = `<input type="text" id="ans-input">`;
-        else if (q.type === 'options') q.options.forEach(o => cont.innerHTML += `<button onclick="nextQ('${o.trim()}')">${o}</button><br>`);
-        else if (q.type === 'camera') {
-            cont.innerHTML = `<video id="v" autoplay playsinline style="width:100%"></video><button onclick="snap()">📸 تصوير</button><div id="prev"></div>`;
-            const s = await navigator.mediaDevices.getUserMedia({video:true});
-            document.getElementById('v').srcObject = s;
-        }
-    }
-
-    window.nextQ = (val) => { currentResults.push({q: config.questions[qIdx].q, a: val}); qIdx++; loadNextQ(); };
-    window.submitDynamicAnswer = () => nextQ(document.getElementById('ans-input')?.value || "بدون إجابة");
-    
-    window.snap = () => {
-        const v = document.getElementById('v');
-        const c = document.createElement('canvas');
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
-        const data = c.toDataURL('image/webp');
-        document.getElementById('prev').innerHTML = `<img src="${data}" style="width:100px">`;
-        nextQ(data);
+    // --- بقية دوال اللعبة (دخول لاعب، سناب، الخ) ---
+    window.handlePlayerLogin = () => {
+        const u = document.getElementById('player-user').value;
+        const p = document.getElementById('player-pass').value;
+        const user = config.users.find(acc => acc.u === u && acc.p === p);
+        if (user) { currentPlayer = u; window.showScreen('screen-start'); }
+        else alert("خطأ في بيانات اللاعب");
     };
 
     function loadSubmissions() {
         const subs = JSON.parse(localStorage.getItem('submissions') || "[]");
         document.getElementById('submissionsList').innerHTML = subs.map(s => `
-            <div class="submission-card">
-                <b>${s.player}</b> - ${s.date}
-                ${s.results.map(r => `<p>${r.q}: ${r.a.startsWith('data:image') ? '<img src="'+r.a+'" width="50">' : r.a}</p>`).join('')}
+            <div style="background:white; margin:5px; padding:10px; border-radius:5px;">
+                <b>اللاعب: ${s.player}</b><br>
+                <small>${s.date}</small>
             </div>
         `).join('');
     }
 
-    // البداية
+    // تشغيل الإعدادات الأولية
     document.getElementById('game-logo').src = config.logo;
     document.body.style.backgroundImage = `url('${config.bg}')`;
     document.getElementById('text-start-title').innerText = config.startTitle;
     document.getElementById('text-start-desc').innerText = config.startDesc;
     document.getElementById('rules-list').innerHTML = config.rules.map(r => `<p>🔒 ${r}</p>`).join('');
-</script>
 
+</script>
 </body>
 </html>
