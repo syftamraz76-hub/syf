@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="tab-title">لعبة الغموض - نظام سهم المطور</title>
+    <style>
+        :root {
+            --primary-red: #8B0000;
+            --text-dark: #2D2D2D;
+            --container-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        body {
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            color: var(--text-dark);
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: 0.5s;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 700px;
+            background: var(--container-bg);
+            padding: 25px;
+            border: 4px double var(--primary-red);
+            position: relative;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            margin: 20px 0;
+            z-index: 2;
+            border-radius: 10px;
+        }
+
+        .logo-container {
+            width: 130px;
+            height: 130px;
+            margin: 0 auto 20px;
+            border: 3px solid var(--primary-red);
+            border-radius: 50%;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .logo-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        .screen { display: none; text-align: center; animation: fadeIn 0.4s ease; }
+        .active { display: block; }
+
+        h1, h3 { color: var(--primary-red); margin-top: 0; }
+        p { line-height: 1.6; }
+
+        button {
+            background: var(--primary-red);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin: 10px 5px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover { filter: brightness(1.2); }
+
+        input, textarea, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+
+        .admin-panel { text-align: right; direction: rtl; max-height: 80vh; overflow-y: auto; }
+        .admin-section { background: #f0f0f0; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-right: 5px solid var(--primary-red); }
+        
+        .user-item, .q-item { background: white; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
+        .admin-btn { background: rgba(0,0,0,0.8); color: #fff; font-size: 0.8rem; position: fixed; bottom: 10px; left: 10px; padding: 10px 15px; border-radius: 50px; z-index: 100; cursor: pointer; border: 1px solid var(--primary-red); }
+        
+        .submission-card { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: right; }
+        .submission-card img, .submission-card audio { display: block; max-width: 150px; margin-top: 10px; }
+
+        video, canvas { width: 100%; max-width: 400px; border: 2px solid var(--primary-red); border-radius: 8px; margin: 10px 0; background: white; touch-action: none; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main-container">
+    <div class="logo-container">
+        <img id="game-logo" src="" alt="Logo">
+    </div>
+
+    <!-- شاشة تسجيل دخول اللاعبين -->
+    <div id="screen-login" class="screen active">
+        <h1>تسجيل الدخول</h1>
+        <input type="text" id="player-user" placeholder="اسم المستخدم">
+        <input type="password" id="player-pass" placeholder="كلمة المرور">
+        <button onclick="handlePlayerLogin()">دخول اللاعبين</button>
+    </div>
+
+    <!-- شاشة تسجيل دخول الإدارة -->
+    <div id="screen-admin-login" class="screen">
+        <h1>🔐 دخول المسؤول</h1>
+        <p>يرجى إدخال بيانات لوحة التحكم</p>
+        <input type="text" id="admin-user-input" placeholder="اسم المستخدم للمسؤول">
+        <input type="password" id="admin-pass-input" placeholder="كلمة المرور">
+        <button onclick="checkAdminCredentials()" style="background: #333;">دخول اللوحة</button>
+        <button onclick="showScreen('screen-login')" style="background: #999;">إلغاء</button>
+    </div>
+
+    <!-- البداية والقوانين -->
+    <div id="screen-start" class="screen">
+        <h1 id="text-start-title"></h1>
+        <p id="text-start-desc"></p>
+        <button onclick="showScreen('screen-rules')">بدء التحدي</button>
+    </div>
+
+    <div id="screen-rules" class="screen">
+        <h1>قوانين اللعبة</h1>
+        <div id="rules-list"></div><br>
+        <button onclick="startDynamicQuestions()">موافق، ابدأ</button>
+    </div>
+
+    <!-- شاشة الأسئلة -->
+    <div id="screen-dynamic-q" class="screen">
+        <h3 id="dynamic-q-text">السؤال؟</h3>
+        <div id="dynamic-q-container"></div>
+        <button id="dynamic-next-btn" style="display:none;" onclick="submitDynamicAnswer()">السؤال التالي</button>
+    </div>
+
+    <div id="screen-end" class="screen">
+        <h1>تم استلام البيانات</h1>
+        <p>لقد انتهيت من جميع المراحل بنجاح.</p>
+    </div>
+
+    <!-- لوحة التحكم -->
+    <div id="screen-admin" class="screen admin-panel">
+        <h2>⚙️ إعدادات الغموض (سهم المطور)</h2>
+        
+        <!-- القسم المعاد: إعدادات المظهر -->
+        <div class="admin-section" style="background: #fff3e0;">
+            <h4>🎨 إعدادات المظهر والروابط</h4>
+            <label>رابط اللوجو (Logo):</label>
+            <input type="text" id="admin-logo-url" placeholder="ضع رابط الصورة هنا">
+            <label>رابط الخلفية (Background):</label>
+            <input type="text" id="admin-bg-url" placeholder="ضع رابط خلفية الموقع">
+            <button onclick="updateVisuals()" style="background:#ef6c00;">تحديث المظهر</button>
+        </div>
+
+        <div class="admin-section" style="background: #e3f2fd;">
+            <h4>🔑 إدارة حسابات الإدارة (المشرفين)</h4>
+            <input type="text" id="new-admin-name" placeholder="اسم أدمن جديد">
+            <input type="text" id="new-admin-pass" placeholder="كلمة سر الأدمن">
+            <button onclick="addNewAdmin()" style="background:#1976d2;">إضافة مسؤول</button>
+            <div id="admin-list-display"></div>
+        </div>
+
+        <div class="admin-section">
+            <h4>👥 إدارة اللاعبين</h4>
+            <input type="text" id="new-user-name" placeholder="اسم المستخدم">
+            <input type="text" id="new-user-pass" placeholder="كلمة السر">
+            <button onclick="addNewUser()" style="background:green;">إضافة لاعب</button>
+            <div id="admin-users-list"></div>
+        </div>
+
+        <div class="admin-section">
+            <h4>❓ إدارة الأسئلة</h4>
+            <input type="text" id="new-q-text" placeholder="نص السؤال">
+            <select id="new-q-type" onchange="toggleAdminOptions()">
+                <option value="text">كتابة نصية</option>
+                <option value="options">اختيارات متعددة</option>
+                <option value="camera">كاميرا (صورة)</option>
+                <option value="file">إرفاق ملف/صورة</option>
+                <option value="audio">تسجيل صوتي</option>
+                <option value="draw">توقيع (رسم)</option>
+            </select>
+            <div id="admin-options-input" style="display:none;">
+                <input type="text" id="new-q-options" placeholder="الاختيارات (افصل بفاصلة ,)">
+            </div>
+            <button onclick="addNewQuestion()" style="background:blue;">إضافة السؤال</button>
+            <div id="admin-questions-list" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="admin-section">
+            <h4>📥 النتائج المستلمة</h4>
+            <div id="submissionsList"></div>
+        </div>
+
+        <button onclick="location.reload()" style="background:#555; width:100%;">إغلاق وحفظ</button>
+    </div>
+</div>
+
+<div class="admin-btn" onclick="showScreen('screen-admin-login')">⚙️ الإدارة</div>
+
+<script>
+    const default_config = {
+        logo: "https://via.placeholder.com/130",
+        bg: "https://replicate.delivery/xpbkg/Hj69fL3855U9Iit751P3971I1b400d4653a2b724/out-0.png",
+        startTitle: "الغموض",
+        startDesc: "هل أنت جاهز لخوض التحدي؟",
+        rules: ["إطاعة الأوامر", "الصدق في الإجابة"],
+        questions: [{q: "ما هو اسمك الحقيقي؟", type: "text"}],
+        users: [{u: "player1", p: "123"}],
+        admins: [{u: "admin", p: "1234"}] 
+    };
+
+    let saved = localStorage.getItem('game_config');
+    let config;
+    
+    if (saved) {
+        config = JSON.parse(saved);
+        if (!config.admins) config.admins = default_config.admins;
+        if (!config.users) config.users = default_config.users;
+        if (!config.questions) config.questions = default_config.questions;
+    } else {
+        config = default_config;
+    }
+
+    let currentPlayer = "";
+    let qIdx = 0;
+    let currentResults = [];
+
+    function applyConfigs() {
+        document.body.style.backgroundImage = `url('${config.bg}')`;
+        document.getElementById('game-logo').src = config.logo;
+        document.getElementById('text-start-title').innerText = config.startTitle;
+        document.getElementById('text-start-desc').innerText = config.startDesc;
+        document.getElementById('rules-list').innerHTML = config.rules.map(r => `<p>🔒 ${r}</p>`).join('');
+        // تعبئة الحقول في لوحة الإدارة
+        document.getElementById('admin-logo-url').value = config.logo;
+        document.getElementById('admin-bg-url').value = config.bg;
+    }
+
+    function updateVisuals() {
+        config.logo = document.getElementById('admin-logo-url').value;
+        config.bg = document.getElementById('admin-bg-url').value;
+        saveConfig();
+        applyConfigs();
+        alert("تم تحديث الصور بنجاح!");
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function handlePlayerLogin() {
+        const u = document.getElementById('player-user').value.trim();
+        const p = document.getElementById('player-pass').value.trim();
+        const user = config.users.find(acc => acc.u === u && acc.p === p);
+        if (user) { currentPlayer = u; showScreen('screen-start'); }
+        else { alert("بيانات اللاعب خاطئة"); }
+    }
+
+    function checkAdminCredentials() {
+        const u = document.getElementById('admin-user-input').value.trim();
+        const p = document.getElementById('admin-pass-input').value.trim();
+        const isAdmin = config.admins.find(acc => acc.u === u && acc.p === p);
+        if (isAdmin) {
+            showScreen('screen-admin');
+            renderAdminQs();
+            renderUsers();
+            renderAdmins();
+            loadResults();
+        } else {
+            alert("بيانات الإدارة غير صحيحة!");
+        }
+    }
+
+    function addNewAdmin() {
+        const u = document.getElementById('new-admin-name').value.trim();
+        const p = document.getElementById('new-admin-pass').value.trim();
+        if(u && p) {
+            config.admins.push({u, p});
+            saveConfig();
+            renderAdmins();
+            document.getElementById('new-admin-name').value = '';
+            document.getElementById('new-admin-pass').value = '';
+        }
+    }
+
+    function renderAdmins() {
+        document.getElementById('admin-list-display').innerHTML = config.admins.map((adm, i) => `
+            <div class="user-item">
+                <span>👤 ${adm.u}</span>
+                ${config.admins.length > 1 ? `<button onclick="deleteAdmin(${i})" style="background:red; padding:3px 8px;">حذف</button>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function deleteAdmin(index) {
+        config.admins.splice(index, 1);
+        saveConfig();
+        renderAdmins();
+    }
+
+    function saveConfig() { localStorage.setItem('game_config', JSON.stringify(config)); }
+
+    function addNewUser() {
+        const u = document.getElementById('new-user-name').value;
+        const p = document.getElementById('new-user-pass').value;
+        if(u && p) { config.users.push({u, p}); saveConfig(); renderUsers(); }
+    }
+
+    function renderUsers() {
+        document.getElementById('admin-users-list').innerHTML = config.users.map((u, i) => `
+            <div class="user-item"><span>${u.u}</span> <button onclick="config.users.splice(${i},1); saveConfig(); renderUsers();">حذف</button></div>
+        `).join('');
+    }
+
+    function addNewQuestion() {
+        const q = document.getElementById('new-q-text').value;
+        const t = document.getElementById('new-q-type').value;
+        let newQ = {q, type: t};
+        if (t === 'options') newQ.options = document.getElementById('new-q-options').value.split(',');
+        config.questions.push(newQ);
+        saveConfig();
+        renderAdminQs();
+    }
+
+    function renderAdminQs() {
+        document.getElementById('admin-questions-list').innerHTML = config.questions.map((q, i) => `
+            <div class="q-item">
+                <span>${q.q} (${q.type})</span>
+                <button onclick="config.questions.splice(${i},1); saveConfig(); renderAdminQs();" style="background:red;">حذف</button>
+            </div>
+        `).join('');
+    }
+
+    function toggleAdminOptions() {
+        document.getElementById('admin-options-input').style.display = (document.getElementById('new-q-type').value === 'options') ? "block" : "none";
+    }
+
+    function startDynamicQuestions() {
+        qIdx = 0; currentResults = []; showScreen('screen-dynamic-q'); loadNextDynamicQ();
+    }
+
+    async function loadNextDynamicQ() {
+        if (qIdx >= config.questions.length) { finishGame(); return; }
+        const qData = config.questions[qIdx];
+        document.getElementById('dynamic-q-text').innerText = qData.q;
+        const container = document.getElementById('dynamic-q-container');
+        const nextBtn = document.getElementById('dynamic-next-btn');
+        container.innerHTML = "";
+        nextBtn.style.display = (qData.type === 'options') ? "none" : "inline-block";
+
+        if (qData.type === 'text') container.innerHTML = `<input type="text" id="ans-text" placeholder="اكتب هنا...">`;
+        else if (qData.type === 'options') {
+            qData.options.forEach(opt => { container.innerHTML += `<button onclick="saveAndNext('${opt.trim()}')">${opt.trim()}</button><br>`; });
+        }
+        else if (qData.type === 'camera') {
+            container.innerHTML = `<video id="v-feed" autoplay playsinline></video><canvas id="v-canvas" style="display:none"></canvas><br><button onclick="takeSnapshot()">📸 تصوير الآن</button><div id="snap-prev"></div>`;
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({video:true});
+                document.getElementById('v-feed').srcObject = s;
+            } catch(e) { alert("الكاميرا غير متاحة"); }
+        }
+        else if (qData.type === 'file') container.innerHTML = `<input type="file" onchange="handleFile(this)"> <div id="file-prev"></div>`;
+        else if (qData.type === 'audio') container.innerHTML = `<button onclick="startAudioRec()">🎤 بدء التسجيل</button><button onclick="stopAudioRec()">🛑 إيقاف</button><div id="audio-prev"></div>`;
+        else if (qData.type === 'draw') {
+            container.innerHTML = `<canvas id="draw-canvas" width="400" height="200" style="border:1px solid #000;"></canvas><br><button onclick="clearCanvas()" style="background:#666;">مسح</button>`;
+            setupCanvas();
+        }
+    }
+
+    function saveAndNext(val) {
+        currentResults.push({q: config.questions[qIdx].q, a: val});
+        qIdx++; loadNextDynamicQ();
+    }
+
+    function submitDynamicAnswer() {
+        let ans = "";
+        const qType = config.questions[qIdx].type;
+        if (qType === 'text') ans = document.getElementById('ans-text').value;
+        else if (qType === 'camera') ans = document.getElementById('snap-prev').dataset.blob;
+        else if (qType === 'file') ans = document.getElementById('file-prev').dataset.blob;
+        else if (qType === 'audio') ans = document.getElementById('audio-prev').dataset.blob;
+        else if (qType === 'draw') ans = document.getElementById('draw-canvas').toDataURL();
+        saveAndNext(ans);
+    }
+
+    function takeSnapshot() {
+        const v = document.getElementById('v-feed'), c = document.getElementById('v-canvas');
+        if(!v || !c) return;
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0,0);
+        const data = c.toDataURL('image/webp');
+        document.getElementById('snap-prev').innerHTML = `<img src="${data}" style="width:100px">`;
+        document.getElementById('snap-prev').dataset.blob = data;
+    }
+
+    function handleFile(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('file-prev').innerHTML = `<p>تم إرفاق الملف ✅</p>`;
+            document.getElementById('file-prev').dataset.blob = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    let mediaRec, chunks = [];
+    function startAudioRec() {
+        navigator.mediaDevices.getUserMedia({audio:true}).then(s => {
+            mediaRec = new MediaRecorder(s); chunks = [];
+            mediaRec.ondataavailable = e => chunks.push(e.data);
+            mediaRec.onstop = () => {
+                const blob = new Blob(chunks, {type:'audio/ogg'});
+                const r = new FileReader();
+                r.onload = (e) => {
+                    document.getElementById('audio-prev').innerHTML = `<audio src="${e.target.result}" controls></audio>`;
+                    document.getElementById('audio-prev').dataset.blob = e.target.result;
+                };
+                r.readAsDataURL(blob);
+            };
+            mediaRec.start();
+        });
+    }
+    function stopAudioRec() { if(mediaRec) mediaRec.stop(); }
+
+    function setupCanvas() {
+        const canvas = document.getElementById('draw-canvas');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let drawing = false; let lastX=0; let lastY=0;
+        const getPos = e => {
+            const r = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return [ clientX - r.left, clientY - r.top ];
+        };
+        const start = e => { drawing = true; [lastX, lastY] = getPos(e); };
+        const move = e => {
+            if(!drawing) return;
+            const [x,y] = getPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x,y); ctx.stroke();
+            [lastX, lastY] = [x,y];
+        };
+        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('touchstart', e => { start(e); e.preventDefault(); });
+        canvas.addEventListener('touchmove', e => { move(e); e.preventDefault(); });
+    }
+
+    function clearCanvas() {
+        const canvas = document.getElementById('draw-canvas');
+        if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function finishGame() {
+        let subs = JSON.parse(localStorage.getItem('submissions') || "[]");
+        subs.push({player: currentPlayer, date: new Date().toLocaleString(), results: currentResults});
+        localStorage.setItem('submissions', JSON.stringify(subs));
+        showScreen('screen-end');
+    }
+
+    function loadResults() {
+        let subs = JSON.parse(localStorage.getItem('submissions') || "[]");
+        document.getElementById('submissionsList').innerHTML = subs.map(s => `
+            <div class="submission-card">
+                <b>👤 اللاعب: ${s.player}</b> | <small>${s.date}</small>
+                <div>${s.results.map(r => `
+                    <p><b>${r.q}:</b> ${r.a && r.a.toString().startsWith('data:image') ? `<br><img src="${r.a}" style="width:100px">` : r.a && r.a.toString().startsWith('data:audio') ? `<br><audio src="${r.a}" controls></audio>` : r.a}</p>
+                `).join('')}</div>
+            </div>
+        `).join('') || "لا يوجد نتائج حالياً";
+    }
+
+    applyConfigs();
+</script>
+</body>
+</html>
