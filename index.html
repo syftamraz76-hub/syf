@@ -90,7 +90,7 @@
 
 <div class="container" id="main-container">
     <div class="logo-container">
-        <img id="game-logo" src="" alt="Logo">
+        <img id="game-logo" src="https://via.placeholder.com/130" alt="Logo">
     </div>
 
     <!-- شاشة تسجيل دخول اللاعبين -->
@@ -140,18 +140,17 @@
     <div id="screen-admin" class="screen admin-panel">
         <h2>⚙️ إعدادات الغموض (سهم المطور)</h2>
         
-        <!-- القسم المعاد: إعدادات المظهر -->
         <div class="admin-section" style="background: #fff3e0;">
-            <h4>🎨 إعدادات المظهر والروابط</h4>
+            <h4>🎨 إعدادات المظهر (الحفظ السحابي)</h4>
             <label>رابط اللوجو (Logo):</label>
             <input type="text" id="admin-logo-url" placeholder="ضع رابط الصورة هنا">
             <label>رابط الخلفية (Background):</label>
             <input type="text" id="admin-bg-url" placeholder="ضع رابط خلفية الموقع">
-            <button onclick="updateVisuals()" style="background:#ef6c00;">تحديث المظهر</button>
+            <button onclick="updateVisualsAndSync()" style="background:#ef6c00;">تحديث وحفظ في السحابة</button>
         </div>
 
         <div class="admin-section" style="background: #e3f2fd;">
-            <h4>🔑 إدارة حسابات الإدارة (المشرفين)</h4>
+            <h4>🔑 إدارة حسابات الإدارة</h4>
             <input type="text" id="new-admin-name" placeholder="اسم أدمن جديد">
             <input type="text" id="new-admin-pass" placeholder="كلمة سر الأدمن">
             <button onclick="addNewAdmin()" style="background:#1976d2;">إضافة مسؤول</button>
@@ -195,7 +194,25 @@
 
 <div class="admin-btn" onclick="showScreen('screen-admin-login')">⚙️ الإدارة</div>
 
-<script>
+<script type="module">
+    // استيراد Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
+        authDomain: "syf12-a7161.firebaseapp.com",
+        projectId: "syf12-a7161",
+        storageBucket: "syf12-a7161.firebasestorage.app",
+        messagingSenderId: "910787310144",
+        appId: "1:910787310144:web:1b3e6590b248e12c5425a5",
+        measurementId: "G-4YG8RVN4H4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // الإعدادات الافتراضية
     const default_config = {
         logo: "https://via.placeholder.com/130",
         bg: "https://replicate.delivery/xpbkg/Hj69fL3855U9Iit751P3971I1b400d4653a2b724/out-0.png",
@@ -207,60 +224,32 @@
         admins: [{u: "admin", p: "1234"}] 
     };
 
-    let saved = localStorage.getItem('game_config');
-    let config;
-    
-    if (saved) {
-        config = JSON.parse(saved);
-        if (!config.admins) config.admins = default_config.admins;
-        if (!config.users) config.users = default_config.users;
-        if (!config.questions) config.questions = default_config.questions;
-    } else {
-        config = default_config;
-    }
-
+    let config = JSON.parse(localStorage.getItem('game_config')) || default_config;
     let currentPlayer = "";
     let qIdx = 0;
     let currentResults = [];
 
-    function applyConfigs() {
-        document.body.style.backgroundImage = `url('${config.bg}')`;
-        document.getElementById('game-logo').src = config.logo;
-        document.getElementById('text-start-title').innerText = config.startTitle;
-        document.getElementById('text-start-desc').innerText = config.startDesc;
-        document.getElementById('rules-list').innerHTML = config.rules.map(r => `<p>🔒 ${r}</p>`).join('');
-        // تعبئة الحقول في لوحة الإدارة
-        document.getElementById('admin-logo-url').value = config.logo;
-        document.getElementById('admin-bg-url').value = config.bg;
-    }
-
-    function updateVisuals() {
-        config.logo = document.getElementById('admin-logo-url').value;
-        config.bg = document.getElementById('admin-bg-url').value;
-        saveConfig();
-        applyConfigs();
-        alert("تم تحديث الصور بنجاح!");
-    }
-
-    function showScreen(id) {
+    // --- ربط الدوال بـ window لتشتغل مع الأزرار في الـ HTML ---
+    
+    window.showScreen = function(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-    }
+    };
 
-    function handlePlayerLogin() {
+    window.handlePlayerLogin = function() {
         const u = document.getElementById('player-user').value.trim();
         const p = document.getElementById('player-pass').value.trim();
         const user = config.users.find(acc => acc.u === u && acc.p === p);
-        if (user) { currentPlayer = u; showScreen('screen-start'); }
+        if (user) { currentPlayer = u; window.showScreen('screen-start'); }
         else { alert("بيانات اللاعب خاطئة"); }
-    }
+    };
 
-    function checkAdminCredentials() {
+    window.checkAdminCredentials = function() {
         const u = document.getElementById('admin-user-input').value.trim();
         const p = document.getElementById('admin-pass-input').value.trim();
         const isAdmin = config.admins.find(acc => acc.u === u && acc.p === p);
         if (isAdmin) {
-            showScreen('screen-admin');
+            window.showScreen('screen-admin');
             renderAdminQs();
             renderUsers();
             renderAdmins();
@@ -268,50 +257,72 @@
         } else {
             alert("بيانات الإدارة غير صحيحة!");
         }
-    }
+    };
 
-    function addNewAdmin() {
+    // تحديث الصور والمزامنة مع السحابة
+    window.updateVisualsAndSync = async function() {
+        const logoUrl = document.getElementById('admin-logo-url').value;
+        const bgUrl = document.getElementById('admin-bg-url').value;
+        
+        config.logo = logoUrl;
+        config.bg = bgUrl;
+        saveConfig();
+
+        try {
+            await setDoc(doc(db, "siteConfig", "mainSettings"), {
+                logo: logoUrl,
+                background: bgUrl,
+                lastUpdated: new Date()
+            });
+            alert("تم التحديث والمزامنة مع الجميع! ✅");
+        } catch (e) {
+            alert("تم الحفظ محلياً، فشل الاتصال بالسحابة.");
+        }
+    };
+
+    // دالة المراقبة التلقائية (تحديث الموقع عند الكل فوراً)
+    onSnapshot(doc(db, "siteConfig", "mainSettings"), (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            document.getElementById('game-logo').src = data.logo;
+            document.body.style.backgroundImage = `url('${data.background}')`;
+            console.log("تحديث سحابي مستلم!");
+        }
+    });
+
+    // باقي الدوال المساعدة
+    function saveConfig() { localStorage.setItem('game_config', JSON.stringify(config)); }
+
+    window.addNewAdmin = function() {
         const u = document.getElementById('new-admin-name').value.trim();
         const p = document.getElementById('new-admin-pass').value.trim();
-        if(u && p) {
-            config.admins.push({u, p});
-            saveConfig();
-            renderAdmins();
-            document.getElementById('new-admin-name').value = '';
-            document.getElementById('new-admin-pass').value = '';
-        }
-    }
+        if(u && p) { config.admins.push({u, p}); saveConfig(); renderAdmins(); }
+    };
 
     function renderAdmins() {
         document.getElementById('admin-list-display').innerHTML = config.admins.map((adm, i) => `
             <div class="user-item">
                 <span>👤 ${adm.u}</span>
-                ${config.admins.length > 1 ? `<button onclick="deleteAdmin(${i})" style="background:red; padding:3px 8px;">حذف</button>` : ''}
+                <button onclick="deleteAdmin(${i})" style="background:red; padding:3px 8px;">حذف</button>
             </div>
         `).join('');
     }
+    window.deleteAdmin = function(i) { config.admins.splice(i, 1); saveConfig(); renderAdmins(); };
 
-    function deleteAdmin(index) {
-        config.admins.splice(index, 1);
-        saveConfig();
-        renderAdmins();
-    }
-
-    function saveConfig() { localStorage.setItem('game_config', JSON.stringify(config)); }
-
-    function addNewUser() {
+    window.addNewUser = function() {
         const u = document.getElementById('new-user-name').value;
         const p = document.getElementById('new-user-pass').value;
         if(u && p) { config.users.push({u, p}); saveConfig(); renderUsers(); }
-    }
+    };
 
     function renderUsers() {
         document.getElementById('admin-users-list').innerHTML = config.users.map((u, i) => `
-            <div class="user-item"><span>${u.u}</span> <button onclick="config.users.splice(${i},1); saveConfig(); renderUsers();">حذف</button></div>
+            <div class="user-item"><span>${u.u}</span> <button onclick="deleteUser(${i})">حذف</button></div>
         `).join('');
     }
+    window.deleteUser = function(i) { config.users.splice(i,1); saveConfig(); renderUsers(); };
 
-    function addNewQuestion() {
+    window.addNewQuestion = function() {
         const q = document.getElementById('new-q-text').value;
         const t = document.getElementById('new-q-type').value;
         let newQ = {q, type: t};
@@ -319,33 +330,45 @@
         config.questions.push(newQ);
         saveConfig();
         renderAdminQs();
-    }
+    };
 
     function renderAdminQs() {
         document.getElementById('admin-questions-list').innerHTML = config.questions.map((q, i) => `
             <div class="q-item">
                 <span>${q.q} (${q.type})</span>
-                <button onclick="config.questions.splice(${i},1); saveConfig(); renderAdminQs();" style="background:red;">حذف</button>
+                <button onclick="deleteQ(${i})" style="background:red;">حذف</button>
             </div>
         `).join('');
     }
+    window.deleteQ = function(i) { config.questions.splice(i,1); saveConfig(); renderAdminQs(); };
 
-    function toggleAdminOptions() {
+    window.toggleAdminOptions = function() {
         document.getElementById('admin-options-input').style.display = (document.getElementById('new-q-type').value === 'options') ? "block" : "none";
+    };
+
+    // تشغيل الموقع لأول مرة
+    function applyInitialConfigs() {
+        document.body.style.backgroundImage = `url('${config.bg}')`;
+        document.getElementById('game-logo').src = config.logo;
+        document.getElementById('text-start-title').innerText = config.startTitle;
+        document.getElementById('text-start-desc').innerText = config.startDesc;
+        document.getElementById('rules-list').innerHTML = config.rules.map(r => `<p>🔒 ${r}</p>`).join('');
+        document.getElementById('admin-logo-url').value = config.logo;
+        document.getElementById('admin-bg-url').value = config.bg;
     }
 
-    function startDynamicQuestions() {
-        qIdx = 0; currentResults = []; showScreen('screen-dynamic-q'); loadNextDynamicQ();
-    }
+    // --- أسئلة اللعبة ---
+    window.startDynamicQuestions = function() {
+        qIdx = 0; currentResults = []; window.showScreen('screen-dynamic-q'); loadNextDynamicQ();
+    };
 
     async function loadNextDynamicQ() {
         if (qIdx >= config.questions.length) { finishGame(); return; }
         const qData = config.questions[qIdx];
         document.getElementById('dynamic-q-text').innerText = qData.q;
         const container = document.getElementById('dynamic-q-container');
-        const nextBtn = document.getElementById('dynamic-next-btn');
         container.innerHTML = "";
-        nextBtn.style.display = (qData.type === 'options') ? "none" : "inline-block";
+        document.getElementById('dynamic-next-btn').style.display = (qData.type === 'options') ? "none" : "inline-block";
 
         if (qData.type === 'text') container.innerHTML = `<input type="text" id="ans-text" placeholder="اكتب هنا...">`;
         else if (qData.type === 'options') {
@@ -353,10 +376,8 @@
         }
         else if (qData.type === 'camera') {
             container.innerHTML = `<video id="v-feed" autoplay playsinline></video><canvas id="v-canvas" style="display:none"></canvas><br><button onclick="takeSnapshot()">📸 تصوير الآن</button><div id="snap-prev"></div>`;
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({video:true});
-                document.getElementById('v-feed').srcObject = s;
-            } catch(e) { alert("الكاميرا غير متاحة"); }
+            const s = await navigator.mediaDevices.getUserMedia({video:true});
+            document.getElementById('v-feed').srcObject = s;
         }
         else if (qData.type === 'file') container.innerHTML = `<input type="file" onchange="handleFile(this)"> <div id="file-prev"></div>`;
         else if (qData.type === 'audio') container.innerHTML = `<button onclick="startAudioRec()">🎤 بدء التسجيل</button><button onclick="stopAudioRec()">🛑 إيقاف</button><div id="audio-prev"></div>`;
@@ -366,12 +387,12 @@
         }
     }
 
-    function saveAndNext(val) {
+    window.saveAndNext = function(val) {
         currentResults.push({q: config.questions[qIdx].q, a: val});
         qIdx++; loadNextDynamicQ();
-    }
+    };
 
-    function submitDynamicAnswer() {
+    window.submitDynamicAnswer = function() {
         let ans = "";
         const qType = config.questions[qIdx].type;
         if (qType === 'text') ans = document.getElementById('ans-text').value;
@@ -379,30 +400,29 @@
         else if (qType === 'file') ans = document.getElementById('file-prev').dataset.blob;
         else if (qType === 'audio') ans = document.getElementById('audio-prev').dataset.blob;
         else if (qType === 'draw') ans = document.getElementById('draw-canvas').toDataURL();
-        saveAndNext(ans);
-    }
+        window.saveAndNext(ans);
+    };
 
-    function takeSnapshot() {
+    window.takeSnapshot = function() {
         const v = document.getElementById('v-feed'), c = document.getElementById('v-canvas');
-        if(!v || !c) return;
         c.width = v.videoWidth; c.height = v.videoHeight;
         c.getContext('2d').drawImage(v, 0,0);
         const data = c.toDataURL('image/webp');
         document.getElementById('snap-prev').innerHTML = `<img src="${data}" style="width:100px">`;
         document.getElementById('snap-prev').dataset.blob = data;
-    }
+    };
 
-    function handleFile(input) {
+    window.handleFile = function(input) {
         const reader = new FileReader();
         reader.onload = (e) => {
             document.getElementById('file-prev').innerHTML = `<p>تم إرفاق الملف ✅</p>`;
             document.getElementById('file-prev').dataset.blob = e.target.result;
         };
         reader.readAsDataURL(input.files[0]);
-    }
+    };
 
     let mediaRec, chunks = [];
-    function startAudioRec() {
+    window.startAudioRec = function() {
         navigator.mediaDevices.getUserMedia({audio:true}).then(s => {
             mediaRec = new MediaRecorder(s); chunks = [];
             mediaRec.ondataavailable = e => chunks.push(e.data);
@@ -417,43 +437,39 @@
             };
             mediaRec.start();
         });
-    }
-    function stopAudioRec() { if(mediaRec) mediaRec.stop(); }
+    };
+    window.stopAudioRec = function() { if(mediaRec) mediaRec.stop(); };
 
     function setupCanvas() {
         const canvas = document.getElementById('draw-canvas');
-        if(!canvas) return;
         const ctx = canvas.getContext('2d');
-        let drawing = false; let lastX=0; let lastY=0;
+        let drawing = false; let lastX=0; lastY=0;
         const getPos = e => {
             const r = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return [ clientX - r.left, clientY - r.top ];
         };
-        const start = e => { drawing = true; [lastX, lastY] = getPos(e); };
-        const move = e => {
+        canvas.onmousedown = canvas.ontouchstart = e => { drawing = true; [lastX, lastY] = getPos(e); if(e.touches) e.preventDefault(); };
+        canvas.onmousemove = canvas.ontouchmove = e => {
             if(!drawing) return;
             const [x,y] = getPos(e);
             ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x,y); ctx.stroke();
             [lastX, lastY] = [x,y];
+            if(e.touches) e.preventDefault();
         };
-        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
-        canvas.addEventListener('mouseup', () => drawing = false);
-        canvas.addEventListener('touchstart', e => { start(e); e.preventDefault(); });
-        canvas.addEventListener('touchmove', e => { move(e); e.preventDefault(); });
+        canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = () => drawing = false;
     }
-
-    function clearCanvas() {
+    window.clearCanvas = function() {
         const canvas = document.getElementById('draw-canvas');
-        if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-    }
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    };
 
     function finishGame() {
         let subs = JSON.parse(localStorage.getItem('submissions') || "[]");
         subs.push({player: currentPlayer, date: new Date().toLocaleString(), results: currentResults});
         localStorage.setItem('submissions', JSON.stringify(subs));
-        showScreen('screen-end');
+        window.showScreen('screen-end');
     }
 
     function loadResults() {
@@ -468,7 +484,7 @@
         `).join('') || "لا يوجد نتائج حالياً";
     }
 
-    applyConfigs();
+    applyInitialConfigs();
 </script>
 </body>
 </html>
