@@ -27,7 +27,6 @@
             transition: 0.5s;
         }
 
-        /* تنسيق الحاوية الأساسي */
         .container {
             width: 95%;
             max-width: 750px;
@@ -73,7 +72,6 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); filter: brightness(1.2); }
-        button:active { transform: translateY(0); }
 
         input, textarea, select { 
             width: 100%; 
@@ -82,11 +80,8 @@
             border: 2px solid #ddd; 
             border-radius: 8px; 
             font-size: 1rem;
-            transition: border-color 0.3s;
         }
-        input:focus { border-color: var(--primary-red); outline: none; }
 
-        /* لوحة التحكم */
         .admin-panel { text-align: right; direction: rtl; max-height: 85vh; overflow-y: auto; padding-left: 10px; }
         .admin-section { 
             background: #f9f9f9; 
@@ -118,43 +113,18 @@
             margin: 10px 0;
             border: 1px dashed var(--primary-red);
         }
-        .perm-grid label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
-        .perm-grid input { width: auto; margin: 0; }
 
-        .admin-badge {
-            background: var(--gold);
-            color: #000;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        /* الميديا */
         video, canvas { width: 100%; max-width: 450px; border: 3px solid var(--primary-red); border-radius: 12px; margin: 15px 0; background: #000; }
         .signature-pad { border: 2px dashed #888; background: #fff; cursor: crosshair; }
 
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        /* زر الإدارة العائم */
         .floating-admin-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background: var(--primary-red);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
-            font-size: 1.5rem;
-            border: 2px solid white;
+            position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px;
+            background: var(--primary-red); color: white; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000;
+            font-size: 1.5rem; border: 2px solid white;
         }
     </style>
 </head>
@@ -165,7 +135,7 @@
         <img id="display-logo" src="https://via.placeholder.com/140" alt="Logo">
     </div>
 
-    <!-- 1. شاشة الدخول الرئيسية -->
+    <!-- شاشات المستخدم (كما هي في كودك) -->
     <div id="screen-login" class="screen active">
         <h1>👤 دخول اللاعبين</h1>
         <input type="text" id="login-user" placeholder="اسم المستخدم">
@@ -173,7 +143,6 @@
         <button onclick="authPlayer()">دخول</button>
     </div>
 
-    <!-- 2. شاشة دخول الإدارة -->
     <div id="screen-admin-login" class="screen">
         <h1>🔐 لوحة المسؤولين</h1>
         <input type="text" id="admin-user-input" placeholder="اسم المسؤول">
@@ -182,21 +151,18 @@
         <button onclick="showScreen('screen-login')" style="background: #777;">رجوع</button>
     </div>
 
-    <!-- 3. شاشة البداية -->
     <div id="screen-start" class="screen">
         <h1 id="start-title">مرحباً بك</h1>
         <p id="start-desc">أنت على وشك دخول منطقة الغموض..</p>
         <button onclick="showScreen('screen-rules')">التالي</button>
     </div>
 
-    <!-- 4. شاشة القوانين -->
     <div id="screen-rules" class="screen">
         <h1>📜 ميثاق اللعبة</h1>
         <div id="rules-content" style="text-align: right; padding: 0 20px;"></div>
         <button onclick="initGameSession()">أوافق وأبدأ التحدي</button>
     </div>
 
-    <!-- 5. شاشة الأسئلة الديناميكية (القلب النابض) -->
     <div id="screen-game" class="screen">
         <h2 id="q-title">السؤال</h2>
         <div id="q-interface"></div>
@@ -205,18 +171,16 @@
         </div>
     </div>
 
-    <!-- 6. شاشة النهاية -->
     <div id="screen-finish" class="screen">
         <h1>✅ تمت المهمة</h1>
         <p>لقد تم إرسال بياناتك بنجاح إلى النظام.</p>
         <button onclick="location.reload()">خروج</button>
     </div>
 
-    <!-- 7. لوحة التحكم (السوبر) -->
+    <!-- لوحة التحكم مع بنك الأسئلة المدمج -->
     <div id="screen-admin-main" class="screen admin-panel">
         <h2 style="border-bottom: 2px solid var(--primary-red); padding-bottom: 10px;">⚙️ إعدادات سهم المطور</h2>
         
-        <!-- قسم الرتب والصلاحيات (فقط للسوبر) -->
         <div class="admin-section" id="admin-management-sec">
             <h4>🛡️ مصفوفة الصلاحيات وحماية الرتب</h4>
             <input type="text" id="adm-new-name" placeholder="اسم المسؤول الجديد">
@@ -233,7 +197,6 @@
             <div id="list-admins"></div>
         </div>
 
-        <!-- قسم المظهر -->
         <div class="admin-section" id="ui-management-sec">
             <h4>🎨 المظهر السحابي</h4>
             <input type="text" id="conf-logo" placeholder="رابط اللوجو">
@@ -242,7 +205,6 @@
             <button onclick="syncVisuals()">تحديث النظام</button>
         </div>
 
-        <!-- قسم اللاعبين -->
         <div class="admin-section" id="player-management-sec">
             <h4>👥 إدارة اللاعبين</h4>
             <input type="text" id="p-new-name" placeholder="الاسم">
@@ -251,7 +213,7 @@
             <div id="list-players"></div>
         </div>
 
-        <!-- قسم الأسئلة -->
+        <!-- قسم بنك الأسئلة المدمج -->
         <div class="admin-section" id="q-management-sec">
             <h4>❓ بنك الأسئلة</h4>
             <input type="text" id="q-new-text" placeholder="نص السؤال">
@@ -265,10 +227,9 @@
                 <input type="text" id="q-opt-val" placeholder="الخيارات (افصل بينها بـ ,)">
             </div>
             <button onclick="addQuestion()" style="background:blue;">إضافة للسلسلة</button>
-            <div id="list-questions"></div>
+            <div id="list-questions" style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;"></div>
         </div>
 
-        <!-- قسم النتائج -->
         <div class="admin-section" id="results-management-sec">
             <h4>📥 النتائج الواردة</h4>
             <div id="list-results"></div>
@@ -284,7 +245,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
-    // إعداداتك الأصلية يا سهم
+    // إعدادات Firebase الخاصة بك
     const firebaseConfig = {
         apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
         authDomain: "syf12-a7161.firebaseapp.com",
@@ -297,7 +258,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // --- قاعدة البيانات المحلية (النسخة الكاملة) ---
     let state = JSON.parse(localStorage.getItem('sahm_db')) || {
         config: {
             logo: "https://via.placeholder.com/140",
@@ -321,18 +281,29 @@
     let gameIdx = 0;
     let tempAnswers = [];
 
-    // --- محرك الشاشات ---
+    // نظام المزامنة السحابية
+    onSnapshot(doc(db, "siteConfig", "main"), (snap) => {
+        if(snap.exists()) {
+            const d = snap.data();
+            if(d.bg) document.body.style.backgroundImage = `url('${d.bg}')`;
+            if(d.logo) document.getElementById('display-logo').src = d.logo;
+            if(d.title) {
+                document.getElementById('tab-title').innerText = d.title;
+                state.config.title = d.title;
+            }
+            localStorage.setItem('sahm_db', JSON.stringify(state));
+        }
+    });
+
     window.showScreen = (id) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
     };
 
-    // --- نظام الحماية والرتب ---
     window.authAdmin = () => {
         const u = document.getElementById('admin-user-input').value;
         const p = document.getElementById('admin-pass-input').value;
         const admin = state.admins.find(a => a.u === u && a.p === p);
-
         if (admin) {
             currentAdmin = admin;
             applyPermsVisibility(admin.perms);
@@ -357,7 +328,6 @@
         const u = document.getElementById('adm-new-name').value;
         const p = document.getElementById('adm-new-pass').value;
         const selected = Array.from(document.querySelectorAll('.p-sub:checked')).map(cb => cb.value);
-        
         if(u && p) {
             state.admins.push({u, p, perms: selected});
             syncAndSave();
@@ -368,7 +338,6 @@
         document.querySelectorAll('.p-sub').forEach(cb => cb.checked = src.checked);
     };
 
-    // --- محرك اللعبة والأسئلة ---
     window.authPlayer = () => {
         const u = document.getElementById('login-user').value;
         const p = document.getElementById('login-pass').value;
@@ -376,15 +345,13 @@
         if(player) {
             currentUser = u;
             document.getElementById('start-title').innerText = state.config.title;
-            document.getElementById('start-desc').innerText = state.config.desc;
             document.getElementById('rules-content').innerHTML = state.config.rules.map(r => `<li>${r}</li>`).join('');
             window.showScreen('screen-start');
         } else alert("خطأ في البيانات");
     };
 
     window.initGameSession = () => {
-        gameIdx = 0;
-        tempAnswers = [];
+        gameIdx = 0; tempAnswers = [];
         window.showScreen('screen-game');
         renderQuestion();
     };
@@ -392,7 +359,6 @@
     async function renderQuestion() {
         const q = state.questions[gameIdx];
         if(!q) { finishGame(); return; }
-
         document.getElementById('q-title').innerText = q.q;
         const container = document.getElementById('q-interface');
         container.innerHTML = "";
@@ -405,7 +371,7 @@
             });
             document.getElementById('btn-next-q').style.display = "none";
         } else if(q.type === 'camera') {
-            container.innerHTML = `<video id="video" autoplay playsinline></video><button onclick="capturePhoto()">📸 التقاط</button><canvas id="canvas" style="display:none;"></canvas><div id="photo-preview"></div>`;
+            container.innerHTML = `<video id="video" autoplay playsinline></video><br><button onclick="capturePhoto()">📸 التقاط</button><canvas id="canvas" style="display:none;"></canvas>`;
             const stream = await navigator.mediaDevices.getUserMedia({video: true});
             document.getElementById('video').srcObject = stream;
             document.getElementById('btn-next-q').style.display = "none";
@@ -413,7 +379,6 @@
             container.innerHTML = `<canvas id="sig-pad" class="signature-pad" width="400" height="200"></canvas><br><button onclick="clearPad()">مسح</button>`;
             initSignature();
         }
-        
         if(q.type !== 'options') document.getElementById('btn-next-q').style.display = "inline-block";
     }
 
@@ -436,9 +401,13 @@
         const c = document.getElementById('canvas');
         c.width = v.videoWidth; c.height = v.videoHeight;
         c.getContext('2d').drawImage(v, 0, 0);
-        const data = c.toDataURL('image/webp');
-        saveAndNext(data);
+        saveAndNext(c.toDataURL('image/webp'));
         v.srcObject.getTracks().forEach(t => t.stop());
+    };
+
+    window.clearPad = () => {
+        const canvas = document.getElementById('sig-pad');
+        if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     };
 
     function finishGame() {
@@ -447,13 +416,14 @@
         window.showScreen('screen-finish');
     }
 
-    // --- الإدارة والمزامنة ---
     window.syncVisuals = async () => {
-        state.config.logo = document.getElementById('conf-logo').value;
-        state.config.bg = document.getElementById('conf-bg').value;
-        state.config.title = document.getElementById('conf-title').value;
-        await setDoc(doc(db, "siteConfig", "main"), state.config);
+        const newLogo = document.getElementById('conf-logo').value;
+        const newBg = document.getElementById('conf-bg').value;
+        const newTitle = document.getElementById('conf-title').value;
+        await setDoc(doc(db, "siteConfig", "main"), { logo: newLogo, bg: newBg, title: newTitle });
+        state.config.logo = newLogo; state.config.bg = newBg; state.config.title = newTitle;
         syncAndSave();
+        alert("تم التحديث سحابياً!");
     };
 
     function syncAndSave() {
@@ -462,64 +432,63 @@
     }
 
     function refreshAdminLists() {
-        // قائمة اللاعبين
         document.getElementById('list-players').innerHTML = state.players.map((p, i) => `
             <div class="row-item">${p.u} <button onclick="state.players.splice(${i},1);syncAndSave()">حذف</button></div>
         `).join('');
 
-        // قائمة الرتب
         document.getElementById('list-admins').innerHTML = state.admins.map((a, i) => `
-            <div class="row-item">
-                <span><span class="admin-badge">RANK</span> ${a.u}</span>
-                <button onclick="state.admins.splice(${i},1);syncAndSave()">حذف</button>
+            <div class="row-item"><span><span class="admin-badge">RANK</span> ${a.u}</span><button onclick="state.admins.splice(${i},1);syncAndSave()">حذف</button></div>
+        `).join('');
+
+        // قائمة الأسئلة المضافة
+        document.getElementById('list-questions').innerHTML = state.questions.map((q, i) => `
+            <div class="row-item" style="font-size:0.8rem;">
+                <span>${i+1}. ${q.q} (${q.type})</span>
+                <button onclick="state.questions.splice(${i},1);syncAndSave()" style="background:red; padding:5px 10px;">حذف</button>
             </div>
         `).join('');
 
-        // قائمة النتائج
         document.getElementById('list-results').innerHTML = state.results.map(r => `
             <div class="admin-section" style="font-size:0.8rem;">
-                <b>اللاعب: ${r.user}</b> | ${r.time}
-                <hr>
+                <b>اللاعب: ${r.user}</b> | ${r.time} <hr>
                 ${r.data.map(d => `<p>${d.question}: ${d.answer.startsWith('data:') ? 'مرفق ميديا' : d.answer}</p>`).join('')}
             </div>
         `).join('');
     }
 
-    // مزامنة سحابية (Firebase Realtime)
-    onSnapshot(doc(db, "siteConfig", "main"), (snap) => {
-        if(snap.exists()) {
-            const d = snap.data();
-            document.body.style.backgroundImage = `url('${d.background}')`;
-            document.getElementById('display-logo').src = d.logo;
-        }
-    });
-
-    // --- أدوات إضافية (توقيع / خيارات) ---
     window.checkQType = (v) => { document.getElementById('q-options-input').style.display = (v === 'options') ? 'block' : 'none'; };
     window.addPlayer = () => { state.players.push({u: document.getElementById('p-new-name').value, p: document.getElementById('p-new-pass').value}); syncAndSave(); };
+    
     window.addQuestion = () => {
-        const q = {q: document.getElementById('q-new-text').value, type: document.getElementById('q-new-type').value};
-        if(q.type === 'options') q.opts = document.getElementById('q-opt-val').value.split(',');
+        const text = document.getElementById('q-new-text').value;
+        const type = document.getElementById('q-new-type').value;
+        if(!text) return alert("اكتب نص السؤال");
+        const q = {q: text, type: type};
+        if(type === 'options') q.opts = document.getElementById('q-opt-val').value.split(',');
         state.questions.push(q);
         syncAndSave();
+        document.getElementById('q-new-text').value = "";
     };
 
     function initSignature() {
         const canvas = document.getElementById('sig-pad');
         const ctx = canvas.getContext('2d');
         let drawing = false;
-        canvas.onmousedown = () => drawing = true;
-        canvas.onmouseup = () => { drawing = false; ctx.beginPath(); };
-        canvas.onmousemove = (e) => {
-            if(!drawing) return;
-            ctx.lineWidth = 2; ctx.lineCap = "round";
-            ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top };
         };
+        const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+        const move = (e) => { if(!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+        const stop = () => drawing = false;
+        
+        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+        canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', stop);
     }
 
-    // تحميل أولي
     document.getElementById('display-logo').src = state.config.logo;
     document.body.style.backgroundImage = `url('${state.config.bg}')`;
+    document.getElementById('tab-title').innerText = state.config.title;
 </script>
 
 </body>
