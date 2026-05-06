@@ -130,6 +130,14 @@
 
         video, canvas { width: 100%; max-width: 450px; border: 3px solid var(--primary-red); border-radius: 12px; margin: 15px 0; background: #000; }
         .signature-pad { border: 2px dashed #888; background: #fff; cursor: crosshair; }
+        
+        .audio-recorder {
+            background: #eee;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 2px solid var(--primary-red);
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
@@ -206,7 +214,6 @@
     <div id="screen-admin-main" class="screen admin-panel">
         <h2 style="border-bottom: 2px solid var(--primary-red); padding-bottom: 10px;">⚙️ إعدادات سهم المطور</h2>
         
-        <!-- قسم الرتب -->
         <div class="admin-section" id="admin-management-sec">
             <h4>🛡️ مصفوفة الصلاحيات وحماية الرتب</h4>
             <div style="background:#eee; padding:10px; border-radius:8px; margin-bottom:10px;">
@@ -225,7 +232,6 @@
             <div id="list-admins"></div>
         </div>
 
-        <!-- قسم المظهر -->
         <div class="admin-section" id="ui-management-sec">
             <h4>🎨 المظهر السحابي</h4>
             <input type="text" id="conf-logo" placeholder="رابط اللوجو">
@@ -234,7 +240,6 @@
             <button onclick="syncVisuals()">تحديث النظام</button>
         </div>
 
-        <!-- قسم اللاعبين -->
         <div class="admin-section" id="player-management-sec">
             <h4>👥 إدارة اللاعبين</h4>
             <div style="background:#eee; padding:10px; border-radius:8px; margin-bottom:10px;">
@@ -245,7 +250,6 @@
             <div id="list-players"></div>
         </div>
 
-        <!-- قسم الأسئلة -->
         <div class="admin-section" id="q-management-sec">
             <h4>❓ بنك الأسئلة</h4>
             <input type="text" id="q-new-text" placeholder="نص السؤال">
@@ -254,6 +258,7 @@
                 <option value="options">اختيارات</option>
                 <option value="camera">كاميرا 📸</option>
                 <option value="draw">توقيع ✍️</option>
+                <option value="audio">تسجيل صوتي 🎤</option>
             </select>
             <div id="q-options-input" style="display:none;">
                 <input type="text" id="q-opt-val" placeholder="الخيارات (افصل بينها بـ ,)">
@@ -262,7 +267,6 @@
             <div id="list-questions"></div>
         </div>
 
-        <!-- قسم النتائج -->
         <div class="admin-section" id="results-management-sec">
             <h4>📥 النتائج الواردة</h4>
             <div id="list-results"></div>
@@ -302,7 +306,7 @@
         players: [{u: "sahm", p: "1 2 3"}],
         questions: [
             {q: "ما هو اسمك الحقيقي؟", type: "text"},
-            {q: "اختر تخصصك", type: "options", opts: ["برمجة", "أمن سيبراني", "تصميم"]},
+            {q: "سجل مقطعاً صوتياً توضح فيه هدفك", type: "audio"},
             {q: "صورة شخصية للتحقق", type: "camera"}
         ],
         results: []
@@ -312,6 +316,8 @@
     let currentAdmin = null;
     let gameIdx = 0;
     let tempAnswers = [];
+    let mediaRecorder;
+    let audioChunks = [];
 
     onSnapshot(doc(db, "siteConfig", "main"), (snap) => {
         if(snap.exists()) {
@@ -342,11 +348,10 @@
 
     function applyPermsVisibility(perms) {
         const mapping = { 'ui': 'ui-management-sec', 'players': 'player-management-sec', 'questions': 'q-management-sec', 'results': 'results-management-sec', 'admins': 'admin-management-sec' };
-        Object.values(mapping).forEach(id => document.getElementById(id).style.display = 'none');
+        Object.values(mapping).forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = 'none'});
         perms.forEach(p => { if(mapping[p]) document.getElementById(mapping[p]).style.display = 'block'; });
     }
 
-    // --- وظائف التعديل الجديدة ---
     window.updateAdmin = (index) => {
         const newU = document.getElementById(`edit-adm-u-${index}`).value;
         const newP = document.getElementById(`edit-adm-p-${index}`).value;
@@ -410,9 +415,56 @@
         } else if(q.type === 'draw') {
             container.innerHTML = `<canvas id="sig-pad" class="signature-pad" width="300" height="200"></canvas><br><button onclick="clearPad()">مسح</button>`;
             initSignature();
+        } else if(q.type === 'audio') {
+            container.innerHTML = `
+                <div class="audio-recorder">
+                    <p id="rec-status">جاهز للتسجيل...</p>
+                    <button id="btn-start-rec" onclick="startAudioRec()">🎙️ بدء التسجيل</button>
+                    <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none; background:black;">🛑 إيقاف وحفظ</button>
+                    <div id="audio-preview-container" style="display:none; margin-top:10px;">
+                        <audio id="audio-preview" controls></audio>
+                    </div>
+                </div>`;
+            document.getElementById('btn-next-q').style.display = "none";
         }
-        if(q.type !== 'options' && q.type !== 'camera') document.getElementById('btn-next-q').style.display = "inline-block";
+        if(q.type !== 'options' && q.type !== 'camera' && q.type !== 'audio') document.getElementById('btn-next-q').style.display = "inline-block";
     }
+
+    // --- منطق الصوت ---
+    window.startAudioRec = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64Audio = reader.result;
+                    document.getElementById('audio-preview').src = base64Audio;
+                    document.getElementById('audio-preview-container').style.display = "block";
+                    const btnSave = document.createElement('button');
+                    btnSave.innerText = "اعتمد التسجيل واكمل ➔";
+                    btnSave.style.background = "green";
+                    btnSave.onclick = () => saveAndNext(base64Audio);
+                    document.getElementById('audio-preview-container').appendChild(btnSave);
+                };
+            };
+            mediaRecorder.start();
+            document.getElementById('btn-start-rec').style.display = "none";
+            document.getElementById('btn-stop-rec').style.display = "inline-block";
+            document.getElementById('rec-status').innerText = "جاري التسجيل... 🔴";
+        } catch (e) { alert("يجب السماح بالمايكروفون"); }
+    };
+
+    window.stopAudioRec = () => {
+        mediaRecorder.stop();
+        document.getElementById('btn-stop-rec').style.display = "none";
+        document.getElementById('rec-status').innerText = "تم التسجيل ✅";
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    };
 
     window.saveAndNext = (val) => { tempAnswers.push({question: state.questions[gameIdx].q, answer: val}); gameIdx++; renderQuestion(); };
 
@@ -428,6 +480,7 @@
     window.capturePhoto = () => {
         const v = document.getElementById('video');
         const c = document.getElementById('canvas');
+        if(!v || !c) return;
         c.width = v.videoWidth; c.height = v.videoHeight;
         c.getContext('2d').drawImage(v, 0, 0);
         const data = c.toDataURL('image/webp');
@@ -461,7 +514,6 @@
     }
 
     function refreshAdminLists() {
-        // تحديث قائمة اللاعبين مع إمكانية التعديل
         if(document.getElementById('list-players')) {
             document.getElementById('list-players').innerHTML = state.players.map((p, i) => `
                 <div class="row-item">
@@ -475,7 +527,6 @@
             `).join('');
         }
 
-        // تحديث قائمة المسؤولين مع إمكانية تعديل الصلاحيات
         if(document.getElementById('list-admins')) {
             document.getElementById('list-admins').innerHTML = state.admins.map((a, i) => `
                 <div class="row-item">
@@ -500,7 +551,12 @@
                 <div class="admin-section" style="font-size:0.8rem; text-align:right;">
                     <b>اللاعب: ${r.user}</b> | ${r.time}
                     <hr>
-                    ${r.data.map(d => `<p><b>${d.question}:</b> ${d.answer.startsWith('data:') ? '<br><img src="'+d.answer+'" style="width:100px; border:1px solid red;">' : d.answer}</p>`).join('')}
+                    ${r.data.map(d => {
+                        let content = d.answer;
+                        if(d.answer.startsWith('data:image')) content = `<br><img src="${d.answer}" style="width:100px; border:1px solid red;">`;
+                        else if(d.answer.startsWith('data:audio')) content = `<br><audio controls src="${d.answer}"></audio>`;
+                        return `<p><b>${d.question}:</b> ${content}</p>`;
+                    }).join('')}
                 </div>
             `).join('');
         }
@@ -535,6 +591,7 @@
 
     function initSignature() {
         const canvas = document.getElementById('sig-pad');
+        if(!canvas) return;
         const ctx = canvas.getContext('2d');
         let drawing = false;
         const getPos = (e) => {
@@ -553,7 +610,6 @@
         if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     };
 
-    // التشغيل الأولي
     document.getElementById('display-logo').src = state.config.logo;
     document.body.style.backgroundImage = `url('${state.config.bg}')`;
     document.getElementById('tab-title').innerText = state.config.title;
