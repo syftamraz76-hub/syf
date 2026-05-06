@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="tab-title">لعبة الغموض - نظام سهم المطور v3</title>
+    <title id="tab-title">لعبة الغموض - نظام سهم المطور الشامل</title>
     <style>
         :root {
             --primary-red: #8B0000;
             --text-dark: #2D2D2D;
             --container-bg: rgba(255, 255, 255, 0.95);
+            --gold: #D4AF37;
         }
 
         body {
@@ -26,164 +27,264 @@
             transition: 0.5s;
         }
 
+        /* تنسيق الحاوية الأساسي */
         .container {
             width: 95%;
-            max-width: 700px;
+            max-width: 750px;
             background: var(--container-bg);
-            padding: 25px;
-            border: 4px double var(--primary-red);
+            padding: 30px;
+            border: 5px double var(--primary-red);
             position: relative;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            margin: 20px 0;
-            z-index: 2;
-            border-radius: 10px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            margin: 20px;
+            border-radius: 15px;
+            z-index: 10;
         }
 
         .logo-container {
-            width: 130px;
-            height: 130px;
-            margin: 0 auto 20px;
-            border: 3px solid var(--primary-red);
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 25px;
+            border: 4px solid var(--primary-red);
             border-radius: 50%;
             overflow: hidden;
             background: #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
         .logo-container img { width: 100%; height: 100%; object-fit: cover; }
 
-        .screen { display: none; text-align: center; animation: fadeIn 0.4s ease; }
+        .screen { display: none; text-align: center; animation: fadeIn 0.5s ease-in-out; }
         .active { display: block; }
 
-        h1, h3 { color: var(--primary-red); margin-top: 0; }
-        p { line-height: 1.6; }
-
+        h1, h2, h3 { color: var(--primary-red); text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        
         button {
             background: var(--primary-red);
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 14px 28px;
             font-size: 1.1rem;
+            font-weight: bold;
             cursor: pointer;
             margin: 10px 5px;
-            border-radius: 5px;
-            transition: 0.3s;
+            border-radius: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
-        button:hover { filter: brightness(1.2); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); filter: brightness(1.2); }
+        button:active { transform: translateY(0); }
 
-        input, textarea, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input, textarea, select { 
+            width: 100%; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--primary-red); outline: none; }
 
-        .admin-panel { text-align: right; direction: rtl; max-height: 80vh; overflow-y: auto; padding-left: 10px; }
-        .admin-section { background: #f0f0f0; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-right: 5px solid var(--primary-red); }
+        /* لوحة التحكم */
+        .admin-panel { text-align: right; direction: rtl; max-height: 85vh; overflow-y: auto; padding-left: 10px; }
+        .admin-section { 
+            background: #f9f9f9; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+            border-right: 8px solid var(--primary-red);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
         
-        .item-row { background: white; padding: 10px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
-        .admin-btn { background: rgba(0,0,0,0.8); color: #fff; font-size: 0.8rem; position: fixed; bottom: 10px; left: 10px; padding: 10px 15px; border-radius: 50px; z-index: 100; cursor: pointer; border: 1px solid var(--primary-red); }
-        
-        .perm-box { display: flex; flex-wrap: wrap; gap: 10px; background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 0.9rem; }
-        .perm-box label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        .perm-box input { width: auto; margin: 0; }
+        .row-item { 
+            background: white; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border-radius: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border: 1px solid #eee;
+        }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .perm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px dashed var(--primary-red);
+        }
+        .perm-grid label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+        .perm-grid input { width: auto; margin: 0; }
+
+        .admin-badge {
+            background: var(--gold);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        /* الميديا */
+        video, canvas { width: 100%; max-width: 450px; border: 3px solid var(--primary-red); border-radius: 12px; margin: 15px 0; background: #000; }
+        .signature-pad { border: 2px dashed #888; background: #fff; cursor: crosshair; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* زر الإدارة العائم */
+        .floating-admin-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-red);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 1.5rem;
+            border: 2px solid white;
+        }
     </style>
 </head>
 <body>
 
-<div class="container" id="main-container">
+<div class="container" id="main-app">
     <div class="logo-container">
-        <img id="game-logo" src="https://via.placeholder.com/130" alt="Logo">
+        <img id="display-logo" src="https://via.placeholder.com/140" alt="Logo">
     </div>
 
-    <!-- شاشات الدخول -->
+    <!-- 1. شاشة الدخول الرئيسية -->
     <div id="screen-login" class="screen active">
-        <h1>تسجيل الدخول</h1>
-        <input type="text" id="player-user" placeholder="اسم المستخدم">
-        <input type="password" id="player-pass" placeholder="كلمة المرور">
-        <button onclick="handlePlayerLogin()">دخول اللاعبين</button>
+        <h1>👤 دخول اللاعبين</h1>
+        <input type="text" id="login-user" placeholder="اسم المستخدم">
+        <input type="password" id="login-pass" placeholder="كلمة المرور">
+        <button onclick="authPlayer()">دخول</button>
     </div>
 
+    <!-- 2. شاشة دخول الإدارة -->
     <div id="screen-admin-login" class="screen">
-        <h1>🔐 دخول المسؤول</h1>
-        <input type="text" id="admin-user-input" placeholder="اسم المستخدم للمسؤول">
-        <input type="password" id="admin-pass-input" placeholder="كلمة المرور">
-        <button onclick="checkAdminCredentials()" style="background: #333;">دخول اللوحة</button>
-        <button onclick="showScreen('screen-login')" style="background: #999;">إلغاء</button>
+        <h1>🔐 لوحة المسؤولين</h1>
+        <input type="text" id="admin-user-input" placeholder="اسم المسؤول">
+        <input type="password" id="admin-pass-input" placeholder="كلمة السر">
+        <button onclick="authAdmin()" style="background: #222;">تحقق من الصلاحيات</button>
+        <button onclick="showScreen('screen-login')" style="background: #777;">رجوع</button>
     </div>
 
-    <!-- شاشات اللعبة (مختصرة للتركيز على الإدارة) -->
+    <!-- 3. شاشة البداية -->
     <div id="screen-start" class="screen">
-        <h1 id="text-start-title"></h1>
-        <p id="text-start-desc"></p>
-        <button onclick="showScreen('screen-rules')">بدء التحدي</button>
+        <h1 id="start-title">مرحباً بك</h1>
+        <p id="start-desc">أنت على وشك دخول منطقة الغموض..</p>
+        <button onclick="showScreen('screen-rules')">التالي</button>
     </div>
-    <div id="screen-rules" class="screen"><h1>القوانين</h1><div id="rules-list"></div><button onclick="startDynamicQuestions()">ابدأ</button></div>
-    <div id="screen-dynamic-q" class="screen"><h3 id="dynamic-q-text"></h3><div id="dynamic-q-container"></div><button id="dynamic-next-btn" style="display:none;" onclick="submitDynamicAnswer()">التالي</button></div>
-    <div id="screen-end" class="screen"><h1>تم الاستلام</h1></div>
 
-    <!-- لوحة التحكم الاحترافية -->
-    <div id="screen-admin" class="screen admin-panel">
-        <h2>⚙️ نظام سهم للمطورين</h2>
+    <!-- 4. شاشة القوانين -->
+    <div id="screen-rules" class="screen">
+        <h1>📜 ميثاق اللعبة</h1>
+        <div id="rules-content" style="text-align: right; padding: 0 20px;"></div>
+        <button onclick="initGameSession()">أوافق وأبدأ التحدي</button>
+    </div>
+
+    <!-- 5. شاشة الأسئلة الديناميكية (القلب النابض) -->
+    <div id="screen-game" class="screen">
+        <h2 id="q-title">السؤال</h2>
+        <div id="q-interface"></div>
+        <div id="q-controls" style="margin-top: 20px;">
+            <button id="btn-next-q" onclick="processAnswer()">السؤال التالي</button>
+        </div>
+    </div>
+
+    <!-- 6. شاشة النهاية -->
+    <div id="screen-finish" class="screen">
+        <h1>✅ تمت المهمة</h1>
+        <p>لقد تم إرسال بياناتك بنجاح إلى النظام.</p>
+        <button onclick="location.reload()">خروج</button>
+    </div>
+
+    <!-- 7. لوحة التحكم (السوبر) -->
+    <div id="screen-admin-main" class="screen admin-panel">
+        <h2 style="border-bottom: 2px solid var(--primary-red); padding-bottom: 10px;">⚙️ إعدادات سهم المطور</h2>
         
-        <!-- قسم المظهر -->
-        <div class="admin-section" id="sec-visuals">
-            <h4>🎨 المظهر السحابي</h4>
-            <input type="text" id="admin-logo-url" placeholder="رابط اللوجو">
-            <input type="text" id="admin-bg-url" placeholder="رابط الخلفية">
-            <button onclick="updateVisualsAndSync()" style="background:#ef6c00;">تحديث وحفظ</button>
-        </div>
-
-        <!-- قسم إضافة إداري جديد (للسوبر أدمن فقط) -->
-        <div class="admin-section" id="sec-admins">
-            <h4>🛡️ إدارة المسؤولين</h4>
-            <input type="text" id="new-admin-name" placeholder="اسم المسؤول الجديد">
-            <input type="text" id="new-admin-pass" placeholder="كلمة السر">
-            <div class="perm-box">
-                <label><input type="checkbox" id="p-visuals" checked> تعديل المظهر</label>
-                <label><input type="checkbox" id="p-players" checked> إدارة لاعبين</label>
-                <label><input type="checkbox" id="p-questions" checked> إدارة أسئلة</label>
-                <label><input type="checkbox" id="p-results" checked> رؤية نتائج</label>
-                <label><input type="checkbox" id="p-full"> إضافة إداريين</label>
+        <!-- قسم الرتب والصلاحيات (فقط للسوبر) -->
+        <div class="admin-section" id="admin-management-sec">
+            <h4>🛡️ مصفوفة الصلاحيات وحماية الرتب</h4>
+            <input type="text" id="adm-new-name" placeholder="اسم المسؤول الجديد">
+            <input type="text" id="adm-new-pass" placeholder="كلمة السر">
+            <div class="perm-grid">
+                <label><input type="checkbox" id="p-all" onchange="toggleAllPerms(this)"> الكل</label>
+                <label><input type="checkbox" class="p-sub" value="ui"> المظهر</label>
+                <label><input type="checkbox" class="p-sub" value="players"> اللاعبين</label>
+                <label><input type="checkbox" class="p-sub" value="questions"> الأسئلة</label>
+                <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
+                <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
             </div>
-            <button onclick="addNewAdmin()" style="background:#333;">إضافة مسؤول بصلاحيات</button>
-            <div id="admin-list-display"></div>
+            <button onclick="createNewAdmin()" style="background:var(--gold); color:black;">إضافة مسؤول رتبة</button>
+            <div id="list-admins"></div>
         </div>
 
-        <!-- إدارة اللاعبين -->
-        <div class="admin-section" id="sec-players">
+        <!-- قسم المظهر -->
+        <div class="admin-section" id="ui-management-sec">
+            <h4>🎨 المظهر السحابي</h4>
+            <input type="text" id="conf-logo" placeholder="رابط اللوجو">
+            <input type="text" id="conf-bg" placeholder="رابط الخلفية">
+            <input type="text" id="conf-title" placeholder="عنوان اللعبة">
+            <button onclick="syncVisuals()">تحديث النظام</button>
+        </div>
+
+        <!-- قسم اللاعبين -->
+        <div class="admin-section" id="player-management-sec">
             <h4>👥 إدارة اللاعبين</h4>
-            <input type="text" id="new-user-name" placeholder="اسم المستخدم">
-            <input type="text" id="new-user-pass" placeholder="كلمة السر">
-            <button onclick="addNewUser()" style="background:green;">إضافة لاعب</button>
-            <div id="admin-users-list"></div>
+            <input type="text" id="p-new-name" placeholder="الاسم">
+            <input type="text" id="p-new-pass" placeholder="الباسورد">
+            <button onclick="addPlayer()" style="background:green;">إضافة لاعب</button>
+            <div id="list-players"></div>
         </div>
 
-        <!-- إدارة الأسئلة -->
-        <div class="admin-section" id="sec-questions">
-            <h4>❓ إدارة الأسئلة</h4>
-            <input type="text" id="new-q-text" placeholder="نص السؤال">
-            <select id="new-q-type">
-                <option value="text">نص</option>
-                <option value="options">خيارات</option>
-                <option value="camera">كاميرا</option>
+        <!-- قسم الأسئلة -->
+        <div class="admin-section" id="q-management-sec">
+            <h4>❓ بنك الأسئلة</h4>
+            <input type="text" id="q-new-text" placeholder="نص السؤال">
+            <select id="q-new-type" onchange="checkQType(this.value)">
+                <option value="text">نصي</option>
+                <option value="options">اختيارات</option>
+                <option value="camera">كاميرا 📸</option>
+                <option value="draw">توقيع ✍️</option>
             </select>
-            <button onclick="addNewQuestion()" style="background:blue;">إضافة السؤال</button>
-            <div id="admin-questions-list"></div>
+            <div id="q-options-input" style="display:none;">
+                <input type="text" id="q-opt-val" placeholder="الخيارات (افصل بينها بـ ,)">
+            </div>
+            <button onclick="addQuestion()" style="background:blue;">إضافة للسلسلة</button>
+            <div id="list-questions"></div>
         </div>
 
-        <!-- النتائج -->
-        <div class="admin-section" id="sec-results">
-            <h4>📥 النتائج المستلمة</h4>
-            <div id="submissionsList"></div>
+        <!-- قسم النتائج -->
+        <div class="admin-section" id="results-management-sec">
+            <h4>📥 النتائج الواردة</h4>
+            <div id="list-results"></div>
         </div>
 
-        <button onclick="location.reload()" style="background:#555; width:100%;">تسجيل خروج من اللوحة</button>
+        <button onclick="location.reload()" style="background:#444; width:100%;">تسجيل خروج</button>
     </div>
 </div>
 
-<div class="admin-btn" onclick="showScreen('screen-admin-login')">⚙️</div>
+<div class="floating-admin-btn" onclick="showScreen('screen-admin-login')">⚙️</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
+    // إعداداتك الأصلية يا سهم
     const firebaseConfig = {
         apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
         authDomain: "syf12-a7161.firebaseapp.com",
@@ -196,173 +297,230 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // الحالة العامة + الإداري الافتراضي (أنت يا سهم)
-    let config = JSON.parse(localStorage.getItem('game_config')) || {
-        logo: "https://via.placeholder.com/130",
-        bg: "https://replicate.delivery/out-0.png",
-        startTitle: "الغموض",
-        startDesc: "هل أنت جاهز؟",
-        rules: ["الالتزام بالوقت"],
-        questions: [{q: "الاسم الرباعي؟", type: "text"}],
-        users: [{u: "sahm", p: "123"}],
-        admins: [{u: "admin", p: "1234", perms: ['visuals', 'players', 'questions', 'results', 'full']}]
+    // --- قاعدة البيانات المحلية (النسخة الكاملة) ---
+    let state = JSON.parse(localStorage.getItem('sahm_db')) || {
+        config: {
+            logo: "https://via.placeholder.com/140",
+            bg: "https://replicate.delivery/out-0.png",
+            title: "لعبة الغموض",
+            desc: "مرحباً بك في تحدي سهم المطور.. أجب بدقة.",
+            rules: ["يمنع الكذب", "يجب تصوير الوجه بوضوح", "التوقيع إلزامي"]
+        },
+        admins: [{u: "admin", p: "1234", perms: ["ui", "players", "questions", "results", "admins"]}],
+        players: [{u: "sahm", p: "1 2 3"}],
+        questions: [
+            {q: "ما هو اسمك الحقيقي؟", type: "text"},
+            {q: "اختر تخصصك", type: "options", opts: ["برمجة", "أمن سيبراني", "تصميم"]},
+            {q: "صورة شخصية للتحقق", type: "camera"}
+        ],
+        results: []
     };
 
-    let currentPlayer = "";
+    let currentUser = null;
     let currentAdmin = null;
+    let gameIdx = 0;
+    let tempAnswers = [];
 
-    // التنقل
+    // --- محرك الشاشات ---
     window.showScreen = (id) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
     };
 
-    // دخول المسؤول مع فحص الصلاحيات
-    window.checkAdminCredentials = () => {
+    // --- نظام الحماية والرتب ---
+    window.authAdmin = () => {
         const u = document.getElementById('admin-user-input').value;
         const p = document.getElementById('admin-pass-input').value;
-        const admin = config.admins.find(a => a.u === u && a.p === p);
+        const admin = state.admins.find(a => a.u === u && a.p === p);
 
         if (admin) {
             currentAdmin = admin;
-            applyPermissions(admin.perms);
-            window.showScreen('screen-admin');
-            renderAdminLists();
-        } else {
-            alert("بيانات المسؤول غير صحيحة");
-        }
+            applyPermsVisibility(admin.perms);
+            window.showScreen('screen-admin-main');
+            refreshAdminLists();
+        } else alert("وصول غير مصرح به!");
     };
 
-    // وظيفة إخفاء الأقسام بناءً على الصلاحية
-    function applyPermissions(perms) {
-        const sections = {
-            'visuals': 'sec-visuals',
-            'players': 'sec-players',
-            'questions': 'sec-questions',
-            'results': 'sec-results',
-            'full': 'sec-admins'
+    function applyPermsVisibility(perms) {
+        const mapping = {
+            'ui': 'ui-management-sec',
+            'players': 'player-management-sec',
+            'questions': 'q-management-sec',
+            'results': 'results-management-sec',
+            'admins': 'admin-management-sec'
         };
-        
-        // إخفاء الكل أولاً
-        Object.values(sections).forEach(id => document.getElementById(id).style.display = 'none');
-        
-        // إظهار المسموح فقط
-        perms.forEach(p => {
-            if (sections[p]) document.getElementById(sections[p]).style.display = 'block';
-        });
+        Object.values(mapping).forEach(id => document.getElementById(id).style.display = 'none');
+        perms.forEach(p => { if(mapping[p]) document.getElementById(mapping[p]).style.display = 'block'; });
     }
 
-    // إضافة مسؤول جديد بصلاحيات محددة
-    window.addNewAdmin = () => {
-        if (!currentAdmin.perms.includes('full')) return alert("ليس لديك صلاحية إضافة إداريين");
+    window.createNewAdmin = () => {
+        const u = document.getElementById('adm-new-name').value;
+        const p = document.getElementById('adm-new-pass').value;
+        const selected = Array.from(document.querySelectorAll('.p-sub:checked')).map(cb => cb.value);
         
-        const u = document.getElementById('new-admin-name').value;
-        const p = document.getElementById('new-admin-pass').value;
-        
-        const perms = [];
-        if (document.getElementById('p-visuals').checked) perms.push('visuals');
-        if (document.getElementById('p-players').checked) perms.push('players');
-        if (document.getElementById('p-questions').checked) perms.push('questions');
-        if (document.getElementById('p-results').checked) perms.push('results');
-        if (document.getElementById('p-full').checked) perms.push('full');
-
-        if (u && p) {
-            config.admins.push({ u, p, perms });
-            saveAndRefresh();
-            alert(`تم إضافة المسؤول ${u} بنجاح`);
+        if(u && p) {
+            state.admins.push({u, p, perms: selected});
+            syncAndSave();
         }
     };
 
-    window.deleteAdmin = (i) => {
-        if (config.admins[i].u === 'admin') return alert("لا يمكن حذف المسؤول الأساسي");
-        config.admins.splice(i, 1);
-        saveAndRefresh();
+    window.toggleAllPerms = (src) => {
+        document.querySelectorAll('.p-sub').forEach(cb => cb.checked = src.checked);
     };
 
-    // المزامنة الحية للخلفية واللوجو
-    window.updateVisualsAndSync = async () => {
-        const logo = document.getElementById('admin-logo-url').value;
-        const bg = document.getElementById('admin-bg-url').value;
-        config.logo = logo; config.bg = bg;
-        localStorage.setItem('game_config', JSON.stringify(config));
-        await setDoc(doc(db, "siteConfig", "mainSettings"), { logo, background: bg });
-        alert("تم التحديث سحابياً");
+    // --- محرك اللعبة والأسئلة ---
+    window.authPlayer = () => {
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pass').value;
+        const player = state.players.find(x => x.u === u && x.p === p);
+        if(player) {
+            currentUser = u;
+            document.getElementById('start-title').innerText = state.config.title;
+            document.getElementById('start-desc').innerText = state.config.desc;
+            document.getElementById('rules-content').innerHTML = state.config.rules.map(r => `<li>${r}</li>`).join('');
+            window.showScreen('screen-start');
+        } else alert("خطأ في البيانات");
     };
 
-    onSnapshot(doc(db, "siteConfig", "mainSettings"), (snap) => {
-        if (snap.exists()) {
+    window.initGameSession = () => {
+        gameIdx = 0;
+        tempAnswers = [];
+        window.showScreen('screen-game');
+        renderQuestion();
+    };
+
+    async function renderQuestion() {
+        const q = state.questions[gameIdx];
+        if(!q) { finishGame(); return; }
+
+        document.getElementById('q-title').innerText = q.q;
+        const container = document.getElementById('q-interface');
+        container.innerHTML = "";
+        
+        if(q.type === 'text') {
+            container.innerHTML = `<input type="text" id="ans-field" placeholder="اكتب إجابتك هنا...">`;
+        } else if(q.type === 'options') {
+            q.opts.forEach(opt => {
+                container.innerHTML += `<button onclick="saveAndNext('${opt}')" style="background:#555; width:80%">${opt}</button>`;
+            });
+            document.getElementById('btn-next-q').style.display = "none";
+        } else if(q.type === 'camera') {
+            container.innerHTML = `<video id="video" autoplay playsinline></video><button onclick="capturePhoto()">📸 التقاط</button><canvas id="canvas" style="display:none;"></canvas><div id="photo-preview"></div>`;
+            const stream = await navigator.mediaDevices.getUserMedia({video: true});
+            document.getElementById('video').srcObject = stream;
+            document.getElementById('btn-next-q').style.display = "none";
+        } else if(q.type === 'draw') {
+            container.innerHTML = `<canvas id="sig-pad" class="signature-pad" width="400" height="200"></canvas><br><button onclick="clearPad()">مسح</button>`;
+            initSignature();
+        }
+        
+        if(q.type !== 'options') document.getElementById('btn-next-q').style.display = "inline-block";
+    }
+
+    window.saveAndNext = (val) => {
+        tempAnswers.push({question: state.questions[gameIdx].q, answer: val});
+        gameIdx++;
+        renderQuestion();
+    };
+
+    window.processAnswer = () => {
+        const q = state.questions[gameIdx];
+        let val = "";
+        if(q.type === 'text') val = document.getElementById('ans-field').value;
+        if(q.type === 'draw') val = document.getElementById('sig-pad').toDataURL();
+        saveAndNext(val);
+    };
+
+    window.capturePhoto = () => {
+        const v = document.getElementById('video');
+        const c = document.getElementById('canvas');
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+        const data = c.toDataURL('image/webp');
+        saveAndNext(data);
+        v.srcObject.getTracks().forEach(t => t.stop());
+    };
+
+    function finishGame() {
+        state.results.push({user: currentUser, time: new Date().toLocaleString(), data: tempAnswers});
+        syncAndSave();
+        window.showScreen('screen-finish');
+    }
+
+    // --- الإدارة والمزامنة ---
+    window.syncVisuals = async () => {
+        state.config.logo = document.getElementById('conf-logo').value;
+        state.config.bg = document.getElementById('conf-bg').value;
+        state.config.title = document.getElementById('conf-title').value;
+        await setDoc(doc(db, "siteConfig", "main"), state.config);
+        syncAndSave();
+    };
+
+    function syncAndSave() {
+        localStorage.setItem('sahm_db', JSON.stringify(state));
+        refreshAdminLists();
+    }
+
+    function refreshAdminLists() {
+        // قائمة اللاعبين
+        document.getElementById('list-players').innerHTML = state.players.map((p, i) => `
+            <div class="row-item">${p.u} <button onclick="state.players.splice(${i},1);syncAndSave()">حذف</button></div>
+        `).join('');
+
+        // قائمة الرتب
+        document.getElementById('list-admins').innerHTML = state.admins.map((a, i) => `
+            <div class="row-item">
+                <span><span class="admin-badge">RANK</span> ${a.u}</span>
+                <button onclick="state.admins.splice(${i},1);syncAndSave()">حذف</button>
+            </div>
+        `).join('');
+
+        // قائمة النتائج
+        document.getElementById('list-results').innerHTML = state.results.map(r => `
+            <div class="admin-section" style="font-size:0.8rem;">
+                <b>اللاعب: ${r.user}</b> | ${r.time}
+                <hr>
+                ${r.data.map(d => `<p>${d.question}: ${d.answer.startsWith('data:') ? 'مرفق ميديا' : d.answer}</p>`).join('')}
+            </div>
+        `).join('');
+    }
+
+    // مزامنة سحابية (Firebase Realtime)
+    onSnapshot(doc(db, "siteConfig", "main"), (snap) => {
+        if(snap.exists()) {
             const d = snap.data();
-            document.getElementById('game-logo').src = d.logo || config.logo;
-            document.body.style.backgroundImage = `url('${d.background || config.bg}')`;
+            document.body.style.backgroundImage = `url('${d.background}')`;
+            document.getElementById('display-logo').src = d.logo;
         }
     });
 
-    // إدارة اللاعبين والأسئلة
-    window.addNewUser = () => {
-        config.users.push({u: document.getElementById('new-user-name').value, p: document.getElementById('new-user-pass').value});
-        saveAndRefresh();
-    };
-    window.deleteUser = (i) => { config.users.splice(i, 1); saveAndRefresh(); };
-
-    window.addNewQuestion = () => {
-        config.questions.push({q: document.getElementById('new-q-text').value, type: document.getElementById('new-q-type').value});
-        saveAndRefresh();
-    };
-    window.deleteQ = (i) => { config.questions.splice(i, 1); saveAndRefresh(); };
-
-    function saveAndRefresh() {
-        localStorage.setItem('game_config', JSON.stringify(config));
-        renderAdminLists();
-    }
-
-    function renderAdminLists() {
-        // قائمة الإداريين
-        document.getElementById('admin-list-display').innerHTML = config.admins.map((a, i) => `
-            <div class="item-row">
-                <span>${a.u} (${a.perms.length} صلاحيات)</span>
-                <button onclick="deleteAdmin(${i})" style="background:red; padding:5px;">حذف</button>
-            </div>
-        `).join('');
-
-        // قائمة اللاعبين
-        document.getElementById('admin-users-list').innerHTML = config.users.map((u, i) => `
-            <div class="item-row">${u.u} <button onclick="deleteUser(${i})">حذف</button></div>
-        `).join('');
-
-        // قائمة الأسئلة
-        document.getElementById('admin-questions-list').innerHTML = config.questions.map((q, i) => `
-            <div class="item-row">${q.q} <button onclick="deleteQ(${i})">حذف</button></div>
-        `).join('');
-
-        loadSubmissions();
-    }
-
-    // --- بقية دوال اللعبة (دخول لاعب، سناب، الخ) ---
-    window.handlePlayerLogin = () => {
-        const u = document.getElementById('player-user').value;
-        const p = document.getElementById('player-pass').value;
-        const user = config.users.find(acc => acc.u === u && acc.p === p);
-        if (user) { currentPlayer = u; window.showScreen('screen-start'); }
-        else alert("خطأ في بيانات اللاعب");
+    // --- أدوات إضافية (توقيع / خيارات) ---
+    window.checkQType = (v) => { document.getElementById('q-options-input').style.display = (v === 'options') ? 'block' : 'none'; };
+    window.addPlayer = () => { state.players.push({u: document.getElementById('p-new-name').value, p: document.getElementById('p-new-pass').value}); syncAndSave(); };
+    window.addQuestion = () => {
+        const q = {q: document.getElementById('q-new-text').value, type: document.getElementById('q-new-type').value};
+        if(q.type === 'options') q.opts = document.getElementById('q-opt-val').value.split(',');
+        state.questions.push(q);
+        syncAndSave();
     };
 
-    function loadSubmissions() {
-        const subs = JSON.parse(localStorage.getItem('submissions') || "[]");
-        document.getElementById('submissionsList').innerHTML = subs.map(s => `
-            <div style="background:white; margin:5px; padding:10px; border-radius:5px;">
-                <b>اللاعب: ${s.player}</b><br>
-                <small>${s.date}</small>
-            </div>
-        `).join('');
+    function initSignature() {
+        const canvas = document.getElementById('sig-pad');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        canvas.onmousedown = () => drawing = true;
+        canvas.onmouseup = () => { drawing = false; ctx.beginPath(); };
+        canvas.onmousemove = (e) => {
+            if(!drawing) return;
+            ctx.lineWidth = 2; ctx.lineCap = "round";
+            ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
+        };
     }
 
-    // تشغيل الإعدادات الأولية
-    document.getElementById('game-logo').src = config.logo;
-    document.body.style.backgroundImage = `url('${config.bg}')`;
-    document.getElementById('text-start-title').innerText = config.startTitle;
-    document.getElementById('text-start-desc').innerText = config.startDesc;
-    document.getElementById('rules-list').innerHTML = config.rules.map(r => `<p>🔒 ${r}</p>`).join('');
-
+    // تحميل أولي
+    document.getElementById('display-logo').src = state.config.logo;
+    document.body.style.backgroundImage = `url('${state.config.bg}')`;
 </script>
+
 </body>
 </html>
