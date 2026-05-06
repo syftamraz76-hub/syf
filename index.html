@@ -199,15 +199,20 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
-        authDomain: "syf12-a7161.firebaseapp.com",
-        projectId: "syf12-a7161",
-        storageBucket: "syf12-a7161.firebasestorage.app",
-        messagingSenderId: "910787310144",
-        appId: "1:910787310144:web:1b3e6590b248e12c5425a5",
-        measurementId: "G-4YG8RVN4H4"
-    };
+  // إعدادات فايربيس الخاصة بمشروعك syf12
+const firebaseConfig = {
+  apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
+  authDomain: "syf12-a7161.firebaseapp.com",
+  projectId: "syf12-a7161",
+  storageBucket: "syf12-a7161.firebasestorage.app",
+  messagingSenderId: "910787310144",
+  appId: "1:910787310144:web:1b3e6590b248e12c5425a5",
+  measurementId: "G-4YG8RVN4H4"
+};
+
+// ابدأ تشغيل فايربيس
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
