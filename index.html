@@ -876,6 +876,10 @@
     let activeStream = null;
     let saveTimer = null;
     let cloudLoaded = false;
+    let saveInFlight = null;
+    let savePendingAfterInflight = false;
+    let lastSavedHash = "";
+    let lastLocalEditAt = 0;
 
     function setSaveState(text, show = true) {
         const box = $("save-state");
@@ -901,37 +905,93 @@
         localStorage.setItem("sahm_mystery_cloud_v1", JSON.stringify(state));
     }
 
-    async function saveGameCloud() {
-        setSaveState("جارٍ الحفظ السحابي...");
+    function compactHash(data) {
+        try { return JSON.stringify(data); }
+        catch(e) { return `${Date.now()}`; }
+    }
+
+    async function saveGameCloud(options = {}) {
+        const data = cloudGameData();
+        const hash = compactHash(data);
+        if(hash === lastSavedHash && !options.force) {
+            if(!options.silent) setSaveState("لا توجد تغييرات جديدة", false);
+            return true;
+        }
+
+        if(saveInFlight) {
+            savePendingAfterInflight = true;
+            return saveInFlight;
+        }
+
+        if(!options.silent) setSaveState("جارٍ الحفظ السريع على السحابة...");
+        saveInFlight = setDoc(DATA_DOC, data, { merge: true })
+            .then(() => {
+                lastSavedHash = hash;
+                lastLocalEditAt = 0;
+                if(!options.silent) setSaveState("تم الحفظ للجميع ✅");
+                return true;
+            })
+            .catch((e) => {
+                console.warn("Cloud save failed", e);
+                if(!options.silent) setSaveState("تعذر الحفظ السحابي، البيانات محفوظة محلياً وسيُعاد المحاولة");
+                return false;
+            })
+            .finally(async () => {
+                saveInFlight = null;
+                if(savePendingAfterInflight) {
+                    savePendingAfterInflight = false;
+                    await saveGameCloud({ silent: true, force: true });
+                    setSaveState("تمت مزامنة آخر تعديل ✅");
+                }
+            });
+
+        return saveInFlight;
+    }
+
+    function scheduleCloudSave(delay = 90) {
+        clearTimeout(saveTimer);
+        setSaveState("تم الحفظ محلياً — جاري رفع التعديل للجميع...");
+        saveTimer = setTimeout(() => saveGameCloud({ silent: false }), delay);
+    }
+
+    async function saveProgressCloud(options = {}) {
         try {
-            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
-            setSaveState("تم الحفظ للجميع ✅");
+            await updateDoc(DATA_DOC, {
+                progress: state.progress,
+                updatedAt: new Date().toISOString()
+            });
+            if(!options.silent) setSaveState("تم حفظ التقدم ✅");
+            return true;
         } catch(e) {
-            console.warn("Cloud save failed", e);
-            setSaveState("تعذر الحفظ السحابي، تم الحفظ محلياً فقط");
+            console.warn("Progress save failed, fallback to full save", e);
+            return await saveGameCloud(options);
         }
     }
 
     function syncAndSave(pushCloud = true) {
+        lastLocalEditAt = Date.now();
         saveLocalOnly();
         applyVisuals();
         refreshAdminLists();
-        if(pushCloud) {
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(saveGameCloud, 350);
-        }
+        if(pushCloud) scheduleCloudSave();
     }
     window.syncAndSave = syncAndSave;
 
     onSnapshot(DATA_DOC, async (snap) => {
         if(snap.exists()) {
+            const localSaveStillFresh = lastLocalEditAt && (Date.now() - lastLocalEditAt < 1200) && !snap.metadata.hasPendingWrites;
+            if(localSaveStillFresh) {
+                cloudLoaded = true;
+                return;
+            }
             state = migrateState(snap.data());
+            lastSavedHash = compactHash(cloudGameData());
             saveLocalOnly();
             applyVisuals();
             refreshAdminLists();
             if(currentUser && $("screen-levels").classList.contains("active")) renderLevelMap();
         } else if(!cloudLoaded) {
-            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
+            await saveGameCloud({ silent: true, force: true });
         }
         cloudLoaded = true;
     }, (err) => {
@@ -1352,7 +1412,7 @@
         const q = activeQueue[gameIdx];
         let val = "";
         if(q.type === "text" || q.type === "coupleText") val = $("ans-field").value.trim();
-        if(q.type === "draw") val = $("sig-pad").toDataURL("image/png");
+        if(q.type === "draw") val = $("sig-pad").toDataURL("image/webp", 0.7);
         if((q.type === "text" || q.type === "coupleText") && val === "") { alert("الرجاء كتابة الإجابة"); return; }
         saveAndNext(val);
     };
@@ -1361,10 +1421,14 @@
         const v = $("video");
         const c = $("canvas");
         if(!v || !c || !v.srcObject) { alert("الكاميرا غير جاهزة"); return; }
-        c.width = v.videoWidth || 640;
-        c.height = v.videoHeight || 480;
+        const sourceW = v.videoWidth || 640;
+        const sourceH = v.videoHeight || 480;
+        const maxSide = 900;
+        const ratio = Math.min(1, maxSide / Math.max(sourceW, sourceH));
+        c.width = Math.round(sourceW * ratio);
+        c.height = Math.round(sourceH * ratio);
         c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-        const data = c.toDataURL("image/webp", 0.82);
+        const data = c.toDataURL("image/webp", 0.68);
         stopActiveMedia();
         saveAndNext(data);
     };
@@ -1382,18 +1446,45 @@
         return new Blob([bytes], { type: mime });
     }
 
+    async function compressImageDataUrl(dataUrl, maxSide = 900, quality = 0.72) {
+        if(!String(dataUrl || "").startsWith("data:image")) return dataUrl;
+        return await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const ratio = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round((img.width || maxSide) * ratio));
+                canvas.height = Math.max(1, Math.round((img.height || maxSide) * ratio));
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/webp", quality));
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        });
+    }
+
     async function uploadDataUrlToStorage(dataUrl, folder, ext) {
-        const blob = dataUrlToBlob(dataUrl);
+        const optimizedDataUrl = String(dataUrl || "").startsWith("data:image")
+            ? await compressImageDataUrl(dataUrl, 900, 0.72)
+            : dataUrl;
+        const blob = dataUrlToBlob(optimizedDataUrl);
         const safeUser = String(currentUser || "guest").replace(/[^\w\u0600-\u06FF-]+/g, "_");
         const filePath = `${folder}/${safeUser}/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
         const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, blob);
+        await uploadBytes(fileRef, blob, {
+            contentType: blob.type || "application/octet-stream",
+            cacheControl: "public,max-age=31536000"
+        });
         return await getDownloadURL(fileRef);
     }
 
     async function uploadBlobToStorage(blob, filePath) {
         const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, blob);
+        await uploadBytes(fileRef, blob, {
+            contentType: blob.type || "application/octet-stream",
+            cacheControl: "public,max-age=31536000"
+        });
         return await getDownloadURL(fileRef);
     }
 
@@ -1529,8 +1620,7 @@
 
 
     async function prepareAnswersForCloud(list) {
-        const prepared = [];
-        for(const item of list) {
+        return await Promise.all(list.map(async (item) => {
             const copy = { ...item };
             const answer = String(copy.answer || "");
             try {
@@ -1542,12 +1632,13 @@
                     copy.answer = { kind: "audio", url };
                 }
             } catch(e) {
-                console.warn("Storage upload failed. Falling back to inline data.", e);
-                copy.answer = answer;
+                console.warn("Storage upload failed. Falling back to compact text placeholder.", e);
+                copy.answer = answer.startsWith("data:")
+                    ? { kind: "upload-error", text: "تعذر رفع الوسائط. راجع Firebase Storage Rules." }
+                    : answer;
             }
-            prepared.push(copy);
-        }
-        return prepared;
+            return copy;
+        }));
     }
 
     async function finishGame() {
@@ -1594,7 +1685,7 @@
                 if(!p.pendingReviewLevels.includes(levelNo)) p.pendingReviewLevels.push(levelNo);
                 p.pendingReviewLevels.sort((a, b) => a - b);
                 saveLocalOnly();
-                await saveGameCloud();
+                await saveProgressCloud({ silent: true });
             }
             setSaveState("تم تسليم النتيجة للتصحيح ✅");
             showScreen("screen-finish");
@@ -2269,15 +2360,17 @@
         }
 
         saveLocalOnly();
-        await saveGameCloud();
 
         try {
-            await updateResultReviewDoc(temp, {
-                reviewStatus: passed ? "passed" : "failed",
-                passed,
-                reviewedBy: currentAdmin ? currentAdmin.u : "admin",
-                reviewedAt: new Date().toISOString()
-            });
+            await Promise.all([
+                saveProgressCloud({ silent: true }),
+                updateResultReviewDoc(temp, {
+                    reviewStatus: passed ? "passed" : "failed",
+                    passed,
+                    reviewedBy: currentAdmin ? currentAdmin.u : "admin",
+                    reviewedAt: new Date().toISOString()
+                })
+            ]);
             setSaveState(passed ? "تم اعتماد اجتياز المستوى ✅" : "تم اعتماد عدم الاجتياز");
             alert(passed ? "تم اعتماد اجتياز اللاعب وفتح الطريق للمستوى التالي." : "تم حفظ النتيجة كغير مجتاز، ويمكن للاعب إعادة المحاولة إذا كان لديه تصريح.");
         } catch(e) {
