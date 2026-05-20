@@ -3,276 +3,586 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="tab-title">لعبة الغموض - نظام سهم المطور الشامل</title>
+    <title id="tab-title">لعبة الغموض - نظام سهم المطور</title>
     <style>
         :root {
             --primary-red: #8B0000;
-            --text-dark: #2D2D2D;
-            --container-bg: rgba(255, 255, 255, 0.95);
+            --primary-dark: #140405;
+            --text-dark: #261c1c;
+            --muted: #746666;
+            --container-bg: rgba(255, 255, 255, 0.94);
             --gold: #D4AF37;
+            --soft-gold: rgba(212, 175, 55, 0.18);
+            --line: rgba(139, 0, 0, 0.18);
+            --shadow: 0 25px 70px rgba(0,0,0,0.38);
         }
 
+        * { box-sizing: border-box; }
+
         body {
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-dark);
+            font-family: Tahoma, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(212,175,55,0.28), transparent 36%),
+                radial-gradient(circle at bottom left, rgba(139,0,0,0.36), transparent 42%),
+                linear-gradient(135deg, #160708 0%, #331011 45%, #070707 100%);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             background-repeat: no-repeat;
-            color: var(--text-dark);
-            font-family: 'Arial', sans-serif;
-            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            transition: 0.5s;
+            padding: 18px;
+            transition: 0.4s ease;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.03) 75%, transparent 75%, transparent);
+            background-size: 34px 34px;
+            pointer-events: none;
         }
 
         .container {
-            width: 95%;
-            max-width: 750px;
+            width: min(1080px, 96vw);
             background: var(--container-bg);
-            padding: 30px;
-            border: 5px double var(--primary-red);
+            border: 1px solid rgba(255,255,255,0.62);
+            border-radius: 28px;
+            padding: 26px;
             position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            margin: 20px;
-            border-radius: 15px;
+            box-shadow: var(--shadow);
             z-index: 10;
+            backdrop-filter: blur(14px);
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 28px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--gold), transparent 30%, var(--primary-red));
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
         }
 
         .logo-container {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 25px;
-            border: 4px solid var(--primary-red);
+            width: 128px;
+            height: 128px;
+            margin: 0 auto 18px;
+            border: 4px solid var(--gold);
             border-radius: 50%;
             overflow: hidden;
             background: #fff;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.24);
         }
 
-        .logo-container img { width: 100%; height: 100%; object-fit: cover; }
+        .logo-container img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-        .screen { display: none; text-align: center; animation: fadeIn 0.5s ease-in-out; }
+        .screen { display: none; text-align: center; animation: fadeIn 0.35s ease both; }
         .active { display: block; }
 
-        h1, h2, h3 { color: var(--primary-red); text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-        
+        h1, h2, h3, h4 { color: var(--primary-red); margin-top: 0; }
+        h1 { font-size: clamp(1.75rem, 4vw, 3rem); }
+        h2 { font-size: clamp(1.35rem, 3vw, 2.1rem); }
+        p { line-height: 1.9; }
+
+        .hero-card {
+            background: linear-gradient(135deg, rgba(139,0,0,0.08), rgba(212,175,55,0.14));
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 24px;
+            margin: 18px auto;
+            max-width: 850px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 13px;
+            border-radius: 999px;
+            background: var(--soft-gold);
+            border: 1px solid rgba(212,175,55,0.5);
+            color: #4a3500;
+            font-weight: bold;
+            font-size: 0.86rem;
+            margin: 4px;
+        }
+
         button {
-            background: var(--primary-red);
+            background: linear-gradient(135deg, var(--primary-red), #4c0000);
             color: white;
             border: none;
-            padding: 14px 28px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 10px 5px;
-            border-radius: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); filter: brightness(1.2); }
-        button:active { transform: translateY(0); }
-
-        input, textarea, select { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 8px 0; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
+            padding: 13px 24px;
             font-size: 1rem;
-            box-sizing: border-box;
-        }
-
-        .admin-panel { text-align: right; direction: rtl; max-height: 85vh; overflow-y: auto; padding-left: 10px; }
-        .admin-section { 
-            background: #f9f9f9; 
-            padding: 20px; 
-            margin-bottom: 20px; 
-            border-radius: 12px; 
-            border-right: 8px solid var(--primary-red);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        
-        .row-item { 
-            background: white; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            border: 1px solid #eee;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .row-controls { display: flex; justify-content: flex-end; gap: 5px; }
-
-        .perm-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 8px;
-            background: #fff;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
-            border: 1px dashed var(--primary-red);
-        }
-        .perm-grid label { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; }
-        .perm-grid input { width: auto; margin: 0; }
-
-        .admin-badge {
-            background: var(--gold);
-            color: #000;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: bold;
-        }
-
-        video, canvas { width: 100%; max-width: 450px; border: 3px solid var(--primary-red); border-radius: 12px; margin: 15px 0; background: #000; }
-        .signature-pad { border: 2px dashed #888; background: #fff; cursor: crosshair; }
-        
-        .audio-recorder {
-            background: #eee;
-            padding: 20px;
+            font-weight: 800;
+            cursor: pointer;
+            margin: 8px 5px;
             border-radius: 12px;
-            margin: 15px 0;
-            border: 2px solid var(--primary-red);
+            transition: all 0.25s ease;
+            box-shadow: 0 8px 18px rgba(139,0,0,0.22);
+        }
+        button:hover { transform: translateY(-2px); filter: brightness(1.12); box-shadow: 0 12px 26px rgba(0,0,0,0.25); }
+        button:active { transform: translateY(0); }
+        button.secondary { background: linear-gradient(135deg, #3d3d3d, #1d1d1d); }
+        button.gold { background: linear-gradient(135deg, var(--gold), #9c7620); color: #140c00; }
+        button.green { background: linear-gradient(135deg, #10723f, #064d28); }
+        button.blue { background: linear-gradient(135deg, #194a96, #082c66); }
+        button.danger { background: linear-gradient(135deg, #b51222, #61010b); }
+        button.small { padding: 8px 12px; font-size: 0.82rem; border-radius: 9px; }
+        button.full { width: 100%; }
+        button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 13px;
+            margin: 7px 0;
+            border: 1px solid rgba(139,0,0,0.22);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: rgba(255,255,255,0.96);
+            outline: none;
+            font-family: inherit;
+        }
+        textarea { min-height: 110px; resize: vertical; line-height: 1.8; }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary-red); box-shadow: 0 0 0 4px rgba(139,0,0,0.09); }
+
+        .grid { display: grid; gap: 14px; }
+        .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-auto { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+            text-align: right;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .level-card, .stat-card, .row-item, .admin-section {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.07);
+        }
+
+        .level-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .level-card.locked {
+            filter: grayscale(0.65);
+            opacity: 0.78;
+        }
+        .level-card::after {
+            content: "";
+            position: absolute;
+            top: -40px;
+            left: -40px;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(212,175,55,0.18);
+        }
+
+        .gate-line {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .status-pending { background: rgba(25, 74, 150, 0.12); border-color: rgba(25,74,150,0.35); color: #123e80; }
+        .status-approved { background: rgba(16, 114, 63, 0.13); border-color: rgba(16,114,63,0.38); color: #075b31; }
+        .status-rejected { background: rgba(181, 18, 34, 0.11); border-color: rgba(181,18,34,0.34); color: #7a0712; }
+        .status-locked { background: rgba(30,30,30,0.10); border-color: rgba(30,30,30,0.25); color: #333; }
+
+        .progress-wrap {
+            background: rgba(139,0,0,0.12);
+            height: 12px;
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 12px 0 20px;
+            border: 1px solid rgba(139,0,0,0.08);
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary-red), var(--gold));
+            transition: 0.35s ease;
+        }
+
+        video, canvas {
+            width: 100%;
+            max-width: 520px;
+            border: 3px solid var(--primary-red);
+            border-radius: 18px;
+            margin: 15px 0;
+            background: #000;
+        }
+        .signature-pad { border: 2px dashed #888; background: #fff; cursor: crosshair; touch-action: none; }
+
+        .audio-recorder {
+            background: rgba(255,255,255,0.86);
+            padding: 20px;
+            border-radius: 18px;
+            margin: 15px 0;
+            border: 1px solid var(--line);
+        }
 
         .floating-admin-btn {
             position: fixed;
             bottom: 20px;
             left: 20px;
-            width: 50px;
-            height: 50px;
-            background: var(--primary-red);
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary-red), #2b0000);
             color: white;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.35);
             z-index: 1000;
-            font-size: 1.5rem;
-            border: 2px solid white;
+            font-size: 1.45rem;
+            border: 2px solid rgba(255,255,255,0.8);
+        }
+
+        .admin-panel { text-align: right; max-height: 86vh; overflow-y: auto; padding-inline: 2px; }
+        .admin-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: rgba(139,0,0,0.06);
+            padding: 8px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+        .tab-btn {
+            margin: 0;
+            padding: 10px 12px;
+            background: transparent;
+            color: var(--primary-red);
+            box-shadow: none;
+            border: 1px solid transparent;
+            font-size: 0.9rem;
+        }
+        .tab-btn.active-tab {
+            background: linear-gradient(135deg, var(--primary-red), #4d0000);
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(139,0,0,0.18);
+        }
+        .tab-pane { display: none; }
+        .tab-pane.active-pane { display: block; animation: fadeIn 0.25s ease both; }
+        .admin-section { margin-bottom: 16px; border-right: 7px solid var(--primary-red); }
+
+        .row-item { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+        .row-controls { display: flex; gap: 7px; justify-content: flex-end; flex-wrap: wrap; }
+        .inline-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .perm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+            gap: 8px;
+            background: rgba(255,255,255,0.88);
+            padding: 10px;
+            border-radius: 12px;
+            margin: 8px 0;
+            border: 1px dashed rgba(139,0,0,0.32);
+        }
+        .perm-grid label { display: flex; align-items: center; gap: 7px; font-size: 0.86rem; cursor: pointer; }
+        .perm-grid input { width: auto; margin: 0; }
+
+        .admin-badge { background: var(--gold); color: #000; padding: 3px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 900; }
+        .hint { color: var(--muted); font-size: 0.88rem; margin: 6px 0; }
+        .result-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 10px 0; }
+        .answer-media { max-width: 220px; border-radius: 10px; border: 1px solid var(--line); }
+
+        .save-state {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 2000;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+            display: none;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        @media (max-width: 720px) {
+            .container { padding: 18px; border-radius: 22px; }
+            .grid-2, .grid-3, .inline-fields { grid-template-columns: 1fr; }
+            .admin-panel { max-height: 88vh; }
+            .tabs { position: relative; }
+            button { width: 100%; margin: 7px 0; }
+            .tab-btn { width: auto; }
+            .floating-admin-btn { width: 50px; height: 50px; }
         }
     </style>
 </head>
 <body>
+
+<div id="save-state" class="save-state">جارٍ الحفظ...</div>
 
 <div class="container" id="main-app">
     <div class="logo-container">
         <img id="display-logo" src="https://via.placeholder.com/140" alt="Logo">
     </div>
 
-    <!-- الشاشات -->
     <div id="screen-login" class="screen active">
-        <h1>👤 دخول اللاعبين</h1>
-        <input type="text" id="login-user" placeholder="اسم المستخدم">
-        <input type="password" id="login-pass" placeholder="كلمة المرور">
-        <button onclick="authPlayer()">دخول</button>
+        <div class="hero-card">
+            <span class="pill">🎮 10 مستويات</span>
+            <span class="pill">⚔️ 30 تحدي</span>
+            <span class="pill">💞 100 سؤال كبلز</span>
+            <span class="pill status-approved">☁️ حفظ سحابي دائم</span>
+            <h1>👤 دخول اللاعبين</h1>
+            <input type="text" id="login-user" placeholder="اسم المستخدم">
+            <input type="password" id="login-pass" placeholder="كلمة المرور">
+            <button onclick="authPlayer()">دخول اللعبة</button>
+        </div>
     </div>
 
     <div id="screen-admin-login" class="screen">
-        <h1>🔐 لوحة المسؤولين</h1>
-        <input type="text" id="admin-user-input" placeholder="اسم المسؤول">
-        <input type="password" id="admin-pass-input" placeholder="كلمة السر">
-        <button onclick="authAdmin()" style="background: #222;">تحقق من الصلاحيات</button>
-        <button onclick="showScreen('screen-login')" style="background: #777;">رجوع</button>
+        <div class="hero-card">
+            <h1>🔐 لوحة المسؤولين</h1>
+            <input type="text" id="admin-user-input" placeholder="اسم المسؤول">
+            <input type="password" id="admin-pass-input" placeholder="كلمة السر">
+            <button onclick="authAdmin()" class="secondary">تحقق من الصلاحيات</button>
+            <button onclick="showScreen('screen-login')" class="danger">رجوع</button>
+        </div>
     </div>
 
     <div id="screen-start" class="screen">
-        <h1 id="start-title">مرحباً بك</h1>
-        <p id="start-desc">أنت على وشك دخول منطقة الغموض..</p>
-        <button onclick="showScreen('screen-rules')">التالي</button>
+        <div class="hero-card">
+            <h1 id="start-title">مرحباً بك</h1>
+            <p id="start-desc">أنت على وشك دخول منطقة الغموض..</p>
+            <div class="grid grid-auto" style="margin-top:14px;">
+                <div class="stat-card"><b>المستويات</b><h2>10</h2><span class="hint">كل مستوى له باب وتصريح</span></div>
+                <div class="stat-card"><b>التحديات</b><h2>30</h2><span class="hint">3 تحديات في كل مستوى</span></div>
+                <div class="stat-card"><b>أسئلة الكبلز</b><h2>100</h2><span class="hint">10 أسئلة نصية لكل مستوى</span></div>
+            </div>
+            <button onclick="showScreen('screen-rules')">التالي</button>
+        </div>
     </div>
 
     <div id="screen-rules" class="screen">
-        <h1>📜 ميثاق اللعبة</h1>
-        <div id="rules-content" style="text-align: right; padding: 0 20px;"></div>
-        <button onclick="initGameSession()">أوافق وأبدأ التحدي</button>
+        <div class="hero-card" style="text-align:right;">
+            <h1 style="text-align:center;">📜 ميثاق اللعبة</h1>
+            <ol id="rules-content"></ol>
+            <div style="text-align:center;">
+                <button onclick="showLevelMap()">أوافق وأدخل خريطة المستويات</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-levels" class="screen">
+        <h1>🗺️ خريطة الأبواب المغلقة</h1>
+        <div class="hero-card" style="text-align:right;">
+            <h3>🕯️ نظام التصريح</h3>
+            <p>كل مستوى لا يفتح إلا بعد إكمال المستوى السابق بالكامل، ثم قبول تصريح الدخول من الإدارة. إذا تم رفض التصريح يبقى الباب مغلقاً حتى ترسل طلباً جديداً.</p>
+            <span class="pill status-locked">🔒 مقفل</span>
+            <span class="pill status-pending">⌛ بانتظار الإدارة</span>
+            <span class="pill status-approved">✅ مصرح</span>
+        </div>
+        <div id="levels-grid" class="level-grid"></div>
+        <button class="secondary" onclick="showScreen('screen-start')">رجوع</button>
     </div>
 
     <div id="screen-game" class="screen">
-        <h2 id="q-title">السؤال</h2>
-        <div id="q-interface"></div>
-        <div id="q-controls" style="margin-top: 20px;">
-            <button id="btn-next-q" onclick="processAnswer()">السؤال التالي</button>
+        <div class="hero-card">
+            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+                <span class="pill" id="q-level-badge">المستوى 1</span>
+                <span class="pill" id="q-kind-badge">تحدي</span>
+                <span class="pill" id="q-counter">1 / 1</span>
+            </div>
+            <div class="progress-wrap"><div id="progress-fill" class="progress-fill"></div></div>
+            <h2 id="q-title">السؤال</h2>
+            <div id="q-interface"></div>
+            <div id="q-controls" style="margin-top: 16px;">
+                <button id="btn-next-q" onclick="processAnswer()">السؤال التالي</button>
+                <button class="secondary" onclick="confirmExitSession()">خروج من الجولة</button>
+            </div>
         </div>
     </div>
 
     <div id="screen-finish" class="screen">
-        <h1>✅ تمت المهمة</h1>
-        <p>لقد تم إرسال بياناتك بنجاح إلى النظام.</p>
-        <button onclick="location.reload()">خروج</button>
+        <div class="hero-card">
+            <h1>✅ تم ختم المستوى</h1>
+            <p>تم حفظ النتيجة والتقدم في قاعدة البيانات السحابية. يمكنك الآن طلب تصريح المستوى التالي.</p>
+            <button onclick="showLevelMap()">العودة للمستويات</button>
+            <button class="secondary" onclick="location.reload()">خروج</button>
+        </div>
     </div>
 
-    <!-- لوحة التحكم الكاملة -->
     <div id="screen-admin-main" class="screen admin-panel">
-        <h2 style="border-bottom: 2px solid var(--primary-red); padding-bottom: 10px;">⚙️ إعدادات سهم المطور</h2>
-        
-        <div class="admin-section" id="admin-management-sec">
-            <h4>🛡️ مصفوفة الصلاحيات وحماية الرتب</h4>
-            <div style="background:#eee; padding:10px; border-radius:8px; margin-bottom:10px;">
-                <input type="text" id="adm-new-name" placeholder="اسم المسؤول الجديد">
-                <input type="text" id="adm-new-pass" placeholder="كلمة السر">
-                <div class="perm-grid">
-                    <label><input type="checkbox" id="p-all" onchange="toggleAllPerms(this)"> الكل</label>
-                    <label><input type="checkbox" class="p-sub" value="ui"> المظهر</label>
-                    <label><input type="checkbox" class="p-sub" value="players"> اللاعبين</label>
-                    <label><input type="checkbox" class="p-sub" value="questions"> الأسئلة</label>
-                    <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
-                    <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
-                </div>
-                <button onclick="createNewAdmin()" style="background:var(--gold); color:black; width:100%;">إضافة مسؤول جديد</button>
+        <div class="admin-top">
+            <div>
+                <h2 style="margin-bottom:5px;">⚙️ لوحة سهم المطور السحابية</h2>
+                <span class="hint" id="admin-welcome">إدارة اللعبة</span>
             </div>
-            <div id="list-admins"></div>
+            <button onclick="location.reload()" class="secondary small">تسجيل خروج</button>
         </div>
 
-        <div class="admin-section" id="ui-management-sec">
-            <h4>🎨 المظهر السحابي</h4>
-            <input type="text" id="conf-logo" placeholder="رابط اللوجو">
-            <input type="text" id="conf-bg" placeholder="رابط الخلفية">
-            <input type="text" id="conf-title" placeholder="عنوان اللعبة">
-            <button onclick="syncVisuals()">تحديث النظام</button>
+        <div id="admin-tabs" class="tabs"></div>
+
+        <div id="tab-dashboard" class="tab-pane">
+            <div class="grid grid-auto" id="dashboard-stats"></div>
+            <div class="admin-section">
+                <h3>☁️ قاعدة البيانات</h3>
+                <p class="hint">كل تعديل تحفظه هنا ينتقل مباشرة لكل من فتح الموقع، ويبقى محفوظاً داخل Firebase حتى لو أغلقت الموقع ورجعت لاحقاً.</p>
+            </div>
         </div>
 
-        <div class="admin-section" id="player-management-sec">
-            <h4>👥 إدارة اللاعبين</h4>
-            <div style="background:#eee; padding:10px; border-radius:8px; margin-bottom:10px;">
-                <input type="text" id="p-new-name" placeholder="الاسم">
-                <input type="text" id="p-new-pass" placeholder="الباسورد">
-                <button onclick="addPlayer()" style="background:green; width:100%;">إضافة لاعب جديد</button>
+        <div id="tab-appearance" class="tab-pane">
+            <div class="admin-section">
+                <h3>🎨 المظهر العام</h3>
+                <input type="text" id="conf-logo" placeholder="رابط اللوجو">
+                <input type="text" id="conf-bg" placeholder="رابط الخلفية - اتركه فارغ لاستخدام الخلفية الفخمة">
+                <input type="text" id="conf-title" placeholder="عنوان اللعبة">
+                <textarea id="conf-desc" placeholder="وصف البداية"></textarea>
+                <textarea id="conf-rules" placeholder="القوانين - كل قانون في سطر"></textarea>
+                <input type="color" id="conf-color" title="لون اللعبة الأساسي" style="height:48px; padding:5px;">
+                <button onclick="syncVisuals()" class="gold">حفظ المظهر والقوانين للجميع</button>
+            </div>
+        </div>
+
+        <div id="tab-players" class="tab-pane">
+            <div class="admin-section">
+                <h3>👥 إدارة اللاعبين</h3>
+                <div class="inline-fields">
+                    <input type="text" id="p-new-name" placeholder="اسم اللاعب">
+                    <input type="text" id="p-new-pass" placeholder="كلمة المرور">
+                </div>
+                <button onclick="addPlayer()" class="green full">إضافة لاعب جديد</button>
             </div>
             <div id="list-players"></div>
         </div>
 
-        <div class="admin-section" id="q-management-sec">
-            <h4>❓ بنك الأسئلة</h4>
-            <input type="text" id="q-new-text" placeholder="نص السؤال">
-            <select id="q-new-type" onchange="checkQType(this.value)">
-                <option value="text">نصي</option>
-                <option value="options">اختيارات</option>
-                <option value="camera">كاميرا 📸</option>
-                <option value="draw">توقيع ✍️</option>
-                <option value="audio">تسجيل صوتي 🎤</option>
-            </select>
-            <div id="q-options-input" style="display:none;">
-                <input type="text" id="q-opt-val" placeholder="الخيارات (افصل بينها بـ ,)">
+        <div id="tab-approvals" class="tab-pane">
+            <div class="admin-section">
+                <h3>🕯️ تصاريح فتح المستويات</h3>
+                <p class="hint">هنا توافق أو ترفض طلبات اللاعبين. الموافقة تفتح المستوى للاعب، والرفض يبقيه مغلقاً.</p>
+                <div class="grid grid-3">
+                    <button onclick="renderAccessRequests('pending')" class="blue">الطلبات المعلقة</button>
+                    <button onclick="renderAccessRequests('approved')" class="green">الموافق عليها</button>
+                    <button onclick="renderAccessRequests('rejected')" class="danger">المرفوضة</button>
+                </div>
             </div>
-            <button onclick="addQuestion()" style="background:blue;">إضافة للسلسلة</button>
-            <div id="list-questions"></div>
+            <div id="list-access-requests"></div>
         </div>
 
-        <div class="admin-section" id="results-management-sec">
-            <h4>📥 النتائج الواردة</h4>
+        <div id="tab-challenges" class="tab-pane">
+            <div class="admin-section">
+                <h3>⚔️ تحديات المستويات</h3>
+                <p class="hint">كل مستوى يسمح بثلاثة تحديات فقط. تستطيع تغيير نوع التحدي: نصي، اختيارات، كاميرا، توقيع، أو تسجيل صوتي.</p>
+                <select id="challenge-level-select" onchange="renderChallengeEditor()"></select>
+                <div id="list-challenges"></div>
+                <div class="row-item">
+                    <h4>إضافة تحدي لهذا المستوى</h4>
+                    <input type="text" id="ch-new-text" placeholder="نص التحدي">
+                    <select id="ch-new-type" onchange="toggleNewChallengeOpts()">
+                        <option value="text">نصي</option>
+                        <option value="options">اختيارات</option>
+                        <option value="camera">كاميرا 📸</option>
+                        <option value="draw">توقيع ✍️</option>
+                        <option value="audio">تسجيل صوتي 🎤</option>
+                    </select>
+                    <input type="text" id="ch-new-opts" placeholder="الخيارات مفصولة بفاصلة ," style="display:none;">
+                    <button onclick="addChallengeToSelectedLevel()" class="blue">إضافة تحدي</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-couples" class="tab-pane">
+            <div class="admin-section">
+                <h3>💞 أسئلة الكبلز</h3>
+                <p class="hint">كل مستوى يحتوي 10 أسئلة كبلز، والإجابة تظهر للاعب كنص فقط بدون اختيارات.</p>
+                <select id="couple-level-select" onchange="renderCoupleEditor()"></select>
+                <textarea id="couple-questions-editor" style="min-height:310px;" placeholder="اكتب 10 أسئلة، كل سؤال في سطر"></textarea>
+                <div class="grid grid-2">
+                    <button onclick="saveCoupleQuestions()" class="gold">حفظ أسئلة هذا المستوى للجميع</button>
+                    <button onclick="fillCoupleLevelToTen()" class="secondary">إكمال الفراغات إلى 10</button>
+                </div>
+                <p class="hint" id="couple-count-hint"></p>
+            </div>
+        </div>
+
+        <div id="tab-progress" class="tab-pane">
+            <div class="admin-section">
+                <h3>🧭 تقدم اللاعبين</h3>
+                <p class="hint">هنا تشوف المستويات المكتملة والتصاريح المفتوحة لكل لاعب، وتقدر تصفر تقدمه إذا احتجت.</p>
+            </div>
+            <div id="list-progress"></div>
+        </div>
+
+        <div id="tab-results" class="tab-pane">
+            <div class="admin-section">
+                <h3>📥 النتائج الواردة</h3>
+                <div class="grid grid-3">
+                    <input type="text" id="result-filter-player" placeholder="فلترة باسم اللاعب" oninput="renderResults()">
+                    <select id="result-filter-level" onchange="renderResults()"><option value="">كل المستويات</option></select>
+                    <button onclick="exportResults()" class="blue">تصدير النتائج JSON</button>
+                </div>
+                <button onclick="clearResultsConfirm()" class="danger full">مسح كل النتائج من قاعدة البيانات</button>
+            </div>
             <div id="list-results"></div>
         </div>
 
-        <button onclick="location.reload()" style="background:#444; width:100%;">تسجيل خروج</button>
+        <div id="tab-admins" class="tab-pane">
+            <div class="admin-section">
+                <h3>🛡️ مصفوفة الصلاحيات وحماية الرتب</h3>
+                <div class="inline-fields">
+                    <input type="text" id="adm-new-name" placeholder="اسم المسؤول الجديد">
+                    <input type="text" id="adm-new-pass" placeholder="كلمة السر">
+                </div>
+                <div class="perm-grid">
+                    <label><input type="checkbox" id="p-all" onchange="toggleAllPerms(this)"> الكل</label>
+                    <label><input type="checkbox" class="p-sub" value="ui"> المظهر</label>
+                    <label><input type="checkbox" class="p-sub" value="players"> اللاعبين</label>
+                    <label><input type="checkbox" class="p-sub" value="approvals"> التصاريح</label>
+                    <label><input type="checkbox" class="p-sub" value="questions"> التحديات والأسئلة</label>
+                    <label><input type="checkbox" class="p-sub" value="progress"> التقدم</label>
+                    <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
+                    <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
+                </div>
+                <button onclick="createNewAdmin()" class="gold full">إضافة مسؤول جديد</button>
+            </div>
+            <div id="list-admins"></div>
+        </div>
     </div>
 </div>
 
@@ -280,7 +590,24 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+        getFirestore,
+        doc,
+        setDoc,
+        onSnapshot,
+        collection,
+        addDoc,
+        query,
+        orderBy,
+        getDocs,
+        writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
@@ -293,326 +620,1125 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    let state = JSON.parse(localStorage.getItem('sahm_db')) || {
-        config: {
-            logo: "https://via.placeholder.com/140",
-            bg: "https://replicate.delivery/out-0.png",
-            title: "لعبة الغموض",
-            desc: "مرحباً بك في تحدي سهم المطور.. أجب بدقة.",
-            rules: ["يمنع الكذب", "يجب تصوير الوجه بوضوح", "التوقيع إلزامي"]
-        },
-        admins: [{u: "admin", p: "1234", perms: ["ui", "players", "questions", "results", "admins"]}],
-        players: [{u: "sahm", p: "1 2 3"}],
-        questions: [
-            {q: "ما هو اسمك الحقيقي؟", type: "text"},
-            {q: "سجل مقطعاً صوتياً توضح فيه هدفك", type: "audio"},
-            {q: "صورة شخصية للتحقق", type: "camera"}
-        ],
-        results: []
+    const DATA_DOC = doc(db, "sahmMysteryGame", "mainData");
+    const RESULTS_COL = "sahmMysteryResults";
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v = "") => String(v)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const permLabels = {
+        ui: "المظهر",
+        players: "اللاعبين",
+        approvals: "تصاريح المستويات",
+        questions: "التحديات والأسئلة",
+        progress: "تقدم اللاعبين",
+        results: "النتائج",
+        admins: "الرتب"
     };
+
+    const tabDefs = [
+        { id: "dashboard", label: "🏠 الرئيسية", perm: "any" },
+        { id: "appearance", label: "🎨 المظهر", perm: "ui" },
+        { id: "players", label: "👥 اللاعبين", perm: "players" },
+        { id: "approvals", label: "🕯️ التصاريح", perm: "approvals" },
+        { id: "challenges", label: "⚔️ التحديات", perm: "questions" },
+        { id: "couples", label: "💞 الكبلز", perm: "questions" },
+        { id: "progress", label: "🧭 التقدم", perm: "progress" },
+        { id: "results", label: "📥 النتائج", perm: "results" },
+        { id: "admins", label: "🛡️ الرتب", perm: "admins" }
+    ];
+
+    function coupleQuestions(level) {
+        const sets = {
+            1: ["وش أول شيء جذبك في شريكك؟","اذكر موقف بسيط خلاك تبتسم بسببه.","وش أكثر صفة تحبها فيه؟","لو تهديه كلمة واحدة اليوم وش بتكون؟","وش الشيء اللي يخليك تحس بالأمان معه؟","وش أول ذكرى جميلة بينكم؟","وش أكثر عادة لطيفة عنده؟","متى حسيت إن العلاقة مختلفة عن غيرها؟","وش الشيء اللي تتمنى يعرفه عنك أكثر؟","اكتب رسالة قصيرة من قلبك له."],
+            2: ["وش معنى الثقة بالنسبة لك في العلاقة؟","متى تحس إن شريكك فعلاً يسمعك؟","وش التصرف اللي يقوي ثقتك فيه؟","وش الشيء اللي تحتاجه وقت الزعل؟","كيف تحب شريكك يطمّنك؟","وش حدودك المهمة في العلاقة؟","اذكر موقف حسيت فيه بالاهتمام.","وش أكثر شيء يخليك ترتاح بالكلام معه؟","كيف تتعاملون مع سوء الفهم؟","وش وعد بسيط تقدر تقدمه له؟"],
+            3: ["وش أجمل ذكرى تتمنى تعيدونها؟","اذكر مكان صار له معنى بسبب شريكك.","وش أغنية أو صوت يذكركم ببعض؟","وش موقف ضحكتوا عليه كثير؟","وش ذكرى بسيطة لكنها غالية عليك؟","متى حسيت إن اليوم صار أجمل بوجوده؟","وش صورة تتمنى تحتفظون فيها للأبد؟","وش أكثر رسالة قديمة تحبها؟","لو تكتب عنوان لفصل من ذكرياتكم وش يكون؟","وش ذكرى تتمنى تصنعونها قريب؟"],
+            4: ["وش حلم تتمنى تحققه مع شريكك؟","كيف تتخيلون يوم مثالي بعد سنة؟","وش هدف صغير تقدرون تبدأونه مع بعض؟","وش الشيء اللي تتمنى تشوفه يكبر بينكم؟","لو عندكم رحلة أحلام، وين بتكون؟","وش مهارة تتمنى تتعلمونها مع بعض؟","كيف يدعمك شريكك في طموحك؟","وش حلم شخصي تبغاه يفهمه؟","وش الشيء اللي تخاف عليه في مستقبلكم؟","اكتب أمنية للمستقبل بينكم."],
+            5: ["وش أفضل طريقة تناسبك للحوار وقت الخلاف؟","وش جملة تحب تسمعها وقت الضغط؟","كيف تعرف أن شريكك متضايق؟","وش الموضوع اللي تحتاجون تتكلمون عنه أكثر؟","وش الشيء اللي يزعلك لكن ما تقوله دائماً؟","كيف تفضل الاعتذار يكون؟","وش علامة الاهتمام عندك؟","متى تحتاج مساحة خاصة؟","وش أسلوب كلام يقربك أكثر؟","اكتب قاعدة تواصل تتمنى بينكم."],
+            6: ["وش أصعب تحدي تجاوزتوه مع بعض؟","كيف تساند شريكك وقت التعب؟","وش الشيء اللي يخليكم ترجعون أقوى بعد الخلاف؟","ما التصرف الذي لا تريد تكراره؟","وش الدرس الذي تعلمته من العلاقة؟","كيف تتعامل مع الغيرة بطريقة صحية؟","وش أكبر سوء فهم صار بينكم؟","وش الشيء اللي يحتاج صبر من الطرفين؟","كيف تطلب الدعم بدون إحراج؟","اكتب رسالة مصالحة قصيرة."],
+            7: ["وش أكثر شيء يضحكك من شريكك؟","لو تسوون تحدي ممتع اليوم وش يكون؟","وش لقب لطيف يناسبه؟","اذكر موقف عفوي جميل صار بينكم.","وش لعبة أو نشاط تحب تسويه معه؟","لو تطبخون وجبة مع بعض وش تختار؟","وش نكتة داخلية بينكم؟","وش حركة بسيطة منه تغيّر مزاجك؟","لو تهديه مفاجأة بسيطة وش بتكون؟","اكتب رسالة مرحة له."],
+            8: ["كيف تتخيلون علاقتكم بعد خمس سنوات؟","وش قرار مهم تحتاجون تناقشونه بهدوء؟","وش معنى الاستقرار بالنسبة لك؟","كيف توزع المسؤوليات بينكم؟","وش عادة مستقبلية تتمنى تبنونها؟","كيف تحافظون على الحب مع الانشغال؟","وش قيمة أساسية ما تتنازل عنها؟","وش الخطة الأقرب التي تجمعكم؟","وش تخوف مستقبلي تحتاج تطمين عنه؟","اكتب اتفاق جميل للمستقبل."],
+            9: ["وش شيء صريح تحب تقوله بلطف؟","وش أكثر شيء تحتاج تقديره؟","ما الشيء الذي تتمنى تغييره في طريقة التعامل؟","وش اعتراف إيجابي لشريكك؟","وش سؤال تخاف تسأله لكن مهم؟","ما الشيء الذي يسعدك ولا يعرفه؟","وش أكثر كلمة تؤثر فيك؟","متى حسيت أنك قصّرت؟","وش شيء تتمنى يسامحك عليه؟","اكتب جملة صادقة بدون مجاملة."],
+            10: ["وش أجمل وعد تقدر تعطيه الآن؟","وش الشيء الذي يجعل العلاقة تستحق الجهد؟","ما تعريفك للحب بعد هذه الأسئلة؟","وش أكثر إجابة من شريكك أثرت فيك؟","وش التغيير الذي تريد تبدأه من اليوم؟","كيف تحبون تحتفلون بنهاية هذا المستوى؟","وش رسالة شكر تقولها له؟","وش عهد بسيط بينكم؟","ما الشيء الذي ستتذكره من هذه اللعبة؟","اكتب ختام من القلب لشريكك."]
+        };
+        return sets[level] || [];
+    }
+
+    function makeChallenge(q, type = "text", opts = ["نعم", "لا", "يمكن"]) {
+        const item = { q, type };
+        if(type === "options") item.opts = opts;
+        return item;
+    }
+
+    function defaultLevels() {
+        const titles = ["بوابة التعارف", "جسر الثقة", "صندوق الذكريات", "أفق الأحلام", "لغة التواصل", "اختبار التحديات", "منطقة المرح", "خطة المستقبل", "غرفة الصراحة", "العهد الأخير"];
+        const challengeTypes = ["text", "audio", "camera", "draw", "options"];
+        return titles.map((title, i) => {
+            const n = i + 1;
+            const typeA = challengeTypes[i % challengeTypes.length];
+            const typeB = challengeTypes[(i + 1) % challengeTypes.length];
+            const typeC = challengeTypes[(i + 2) % challengeTypes.length];
+            return {
+                title,
+                desc: `مستوى رقم ${n} بتحديات مختلفة وأسئلة أعمق.`,
+                challenges: [
+                    makeChallenge(`تحدي ${n}-1: اكتب إجابة صريحة عن أكثر شيء يميز هذا المستوى.`, typeA),
+                    makeChallenge(`تحدي ${n}-2: نفذ المهمة المطلوبة وأثبت جاهزيتك للمستوى.`, typeB),
+                    makeChallenge(`تحدي ${n}-3: القرار النهائي للمستوى ${n}.`, typeC, ["جاهز", "أحتاج دقيقة", "تخطي"])
+                ],
+                coupleQuestions: coupleQuestions(n)
+            };
+        });
+    }
+
+    function defaultState() {
+        return {
+            config: {
+                logo: "https://via.placeholder.com/140",
+                bg: "",
+                title: "لعبة الغموض",
+                desc: "مرحباً بك في تحدي سهم المطور.. كل باب يحتاج تصريح.",
+                rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "كل مستوى لا يفتح إلا بتصريح الإدارة", "احترم الطرف الآخر في كل إجابة"],
+                primaryColor: "#8B0000"
+            },
+            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "admins"]}],
+            players: [{u: "sahm", p: "1 2 3"}],
+            levels: defaultLevels(),
+            accessRequests: [],
+            progress: {}
+        };
+    }
+
+    function migrateState(input) {
+        const base = defaultState();
+        const old = input && typeof input === "object" ? input : {};
+        const merged = {
+            ...base,
+            ...old,
+            config: {...base.config, ...(old.config || {})},
+            admins: Array.isArray(old.admins) && old.admins.length ? old.admins : base.admins,
+            players: Array.isArray(old.players) && old.players.length ? old.players : base.players,
+            levels: Array.isArray(old.levels) && old.levels.length ? old.levels : base.levels,
+            accessRequests: Array.isArray(old.accessRequests) ? old.accessRequests : base.accessRequests,
+            progress: old.progress && typeof old.progress === "object" ? old.progress : base.progress
+        };
+
+        merged.admins = merged.admins.map(a => {
+            const perms = Array.isArray(a.perms) ? [...new Set(a.perms)] : [];
+            if(perms.includes("admins") && !perms.includes("approvals")) perms.push("approvals");
+            if(perms.includes("admins") && !perms.includes("progress")) perms.push("progress");
+            return { ...a, perms };
+        });
+
+        if(!Array.isArray(old.levels) && Array.isArray(old.questions)) {
+            merged.levels = defaultLevels();
+            merged.levels[0].challenges = old.questions.slice(0, 3).map(q => ({
+                q: q.q || "تحدي",
+                type: q.type || "text",
+                opts: q.opts || ["نعم", "لا"]
+            }));
+        }
+
+        merged.levels = merged.levels.slice(0, 10);
+        while(merged.levels.length < 10) merged.levels.push(defaultLevels()[merged.levels.length]);
+        merged.levels = merged.levels.map((lvl, i) => {
+            const def = defaultLevels()[i];
+            const challenges = Array.isArray(lvl.challenges) ? lvl.challenges.slice(0, 3) : def.challenges;
+            const coupleQs = Array.isArray(lvl.coupleQuestions) ? lvl.coupleQuestions.slice(0, 10) : def.coupleQuestions;
+            while(coupleQs.length < 10) coupleQs.push(def.coupleQuestions[coupleQs.length] || `سؤال كبلز ${coupleQs.length + 1}`);
+            return {
+                title: lvl.title || def.title,
+                desc: lvl.desc || def.desc,
+                challenges,
+                coupleQuestions: coupleQs
+            };
+        });
+        return merged;
+    }
+
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem("sahm_mystery_cloud_v1") || localStorage.getItem("sahm_mystery_v2") || localStorage.getItem("sahm_db") || "null"); } catch(e) {}
+    let state = migrateState(stored);
+    let results = [];
 
     let currentUser = null;
     let currentAdmin = null;
     let gameIdx = 0;
     let tempAnswers = [];
-    let mediaRecorder;
+    let activeQueue = [];
+    let activeMode = "level-full";
+    let activeLevelIndex = null;
+    let mediaRecorder = null;
     let audioChunks = [];
+    let activeStream = null;
+    let saveTimer = null;
+    let cloudLoaded = false;
 
-    onSnapshot(doc(db, "siteConfig", "main"), (snap) => {
-        if(snap.exists()) {
-            const d = snap.data();
-            if(d.bg) { document.body.style.backgroundImage = `url('${d.bg}')`; state.config.bg = d.bg; }
-            if(d.logo) { document.getElementById('display-logo').src = d.logo; state.config.logo = d.logo; }
-            if(d.title) { document.getElementById('tab-title').innerText = d.title; state.config.title = d.title; }
-            localStorage.setItem('sahm_db', JSON.stringify(state));
-        }
-    });
-
-    window.showScreen = (id) => {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-    };
-
-    window.authAdmin = () => {
-        const u = document.getElementById('admin-user-input').value;
-        const p = document.getElementById('admin-pass-input').value;
-        const admin = state.admins.find(a => a.u === u && a.p === p);
-        if (admin) {
-            currentAdmin = admin;
-            applyPermsVisibility(admin.perms);
-            window.showScreen('screen-admin-main');
-            refreshAdminLists();
-        } else alert("وصول غير مصرح به!");
-    };
-
-    function applyPermsVisibility(perms) {
-        const mapping = { 'ui': 'ui-management-sec', 'players': 'player-management-sec', 'questions': 'q-management-sec', 'results': 'results-management-sec', 'admins': 'admin-management-sec' };
-        Object.values(mapping).forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = 'none'});
-        perms.forEach(p => { if(mapping[p]) document.getElementById(mapping[p]).style.display = 'block'; });
+    function setSaveState(text, show = true) {
+        const box = $("save-state");
+        if(!box) return;
+        box.textContent = text;
+        box.style.display = show ? "block" : "none";
+        if(show && text.includes("تم")) setTimeout(() => box.style.display = "none", 1300);
     }
 
-    window.updateAdmin = (index) => {
-        const newU = document.getElementById(`edit-adm-u-${index}`).value;
-        const newP = document.getElementById(`edit-adm-p-${index}`).value;
-        const newPerms = Array.from(document.querySelectorAll(`.edit-adm-perm-${index}:checked`)).map(cb => cb.value);
-        if(newU && newP) {
-            state.admins[index] = { u: newU, p: newP, perms: newPerms };
-            syncAndSave();
-            alert("تم تحديث بيانات المسؤول");
+    function cloudGameData() {
+        return {
+            config: state.config,
+            admins: state.admins,
+            players: state.players,
+            levels: state.levels,
+            accessRequests: state.accessRequests,
+            progress: state.progress,
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    function saveLocalOnly() {
+        localStorage.setItem("sahm_mystery_cloud_v1", JSON.stringify(state));
+    }
+
+    async function saveGameCloud() {
+        setSaveState("جارٍ الحفظ السحابي...");
+        try {
+            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
+            setSaveState("تم الحفظ للجميع ✅");
+        } catch(e) {
+            console.warn("Cloud save failed", e);
+            setSaveState("تعذر الحفظ السحابي، تم الحفظ محلياً فقط");
         }
-    };
+    }
 
-    window.updatePlayer = (index) => {
-        const newU = document.getElementById(`edit-p-u-${index}`).value;
-        const newP = document.getElementById(`edit-p-p-${index}`).value;
-        if(newU && newP) {
-            state.players[index] = { u: newU, p: newP };
-            syncAndSave();
-            alert("تم تحديث بيانات اللاعب");
+    function syncAndSave(pushCloud = true) {
+        saveLocalOnly();
+        applyVisuals();
+        refreshAdminLists();
+        if(pushCloud) {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveGameCloud, 350);
         }
-    };
+    }
+    window.syncAndSave = syncAndSave;
 
-    window.createNewAdmin = () => {
-        const u = document.getElementById('adm-new-name').value;
-        const p = document.getElementById('adm-new-pass').value;
-        const selected = Array.from(document.querySelectorAll('.p-sub:checked')).map(cb => cb.value);
-        if(u && p) { state.admins.push({u, p, perms: selected}); syncAndSave(); }
-    };
+    onSnapshot(DATA_DOC, async (snap) => {
+        if(snap.exists()) {
+            state = migrateState(snap.data());
+            saveLocalOnly();
+            applyVisuals();
+            refreshAdminLists();
+            if(currentUser && $("screen-levels").classList.contains("active")) renderLevelMap();
+        } else if(!cloudLoaded) {
+            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
+        }
+        cloudLoaded = true;
+    }, (err) => {
+        console.warn("Data listener error", err);
+        cloudLoaded = true;
+    });
 
-    window.toggleAllPerms = (src) => { document.querySelectorAll('.p-sub').forEach(cb => cb.checked = src.checked); };
+    onSnapshot(query(collection(db, RESULTS_COL), orderBy("isoTime", "desc")), (snap) => {
+        results = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        if(currentAdmin) {
+            renderDashboard();
+            renderResults();
+        }
+    }, (err) => console.warn("Results listener error", err));
+
+    function applyVisuals() {
+        document.documentElement.style.setProperty("--primary-red", state.config.primaryColor || "#8B0000");
+        $("display-logo").src = state.config.logo || "https://via.placeholder.com/140";
+        $("tab-title").innerText = state.config.title || "لعبة الغموض";
+        if(state.config.bg) {
+            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.26), rgba(0,0,0,0.48)), url('${state.config.bg}')`;
+        } else {
+            document.body.style.backgroundImage = "";
+        }
+    }
+
+    function stopActiveMedia() {
+        if(activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+            activeStream = null;
+        }
+        if(mediaRecorder && mediaRecorder.state === "recording") {
+            try { mediaRecorder.stop(); } catch(e) {}
+        }
+    }
+
+    window.showScreen = (id) => {
+        stopActiveMedia();
+        document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+        $(id).classList.add("active");
+    };
 
     window.authPlayer = () => {
-        const u = document.getElementById('login-user').value;
-        const p = document.getElementById('login-pass').value;
+        const u = $("login-user").value.trim();
+        const p = $("login-pass").value;
         const player = state.players.find(x => x.u === u && x.p === p);
         if(player) {
             currentUser = u;
-            document.getElementById('start-title').innerText = state.config.title;
-            document.getElementById('start-desc').innerText = state.config.desc;
-            document.getElementById('rules-content').innerHTML = state.config.rules.map(r => `<li>${r}</li>`).join('');
-            window.showScreen('screen-start');
-        } else alert("خطأ في البيانات");
+            $("start-title").innerText = state.config.title;
+            $("start-desc").innerText = state.config.desc;
+            $("rules-content").innerHTML = state.config.rules.map(r => `<li>${esc(r)}</li>`).join("");
+            showScreen("screen-start");
+        } else alert("خطأ في بيانات اللاعب");
     };
 
-    window.initGameSession = () => { gameIdx = 0; tempAnswers = []; window.showScreen('screen-game'); renderQuestion(); };
+    window.authAdmin = () => {
+        const u = $("admin-user-input").value.trim();
+        const p = $("admin-pass-input").value;
+        const admin = state.admins.find(a => a.u === u && a.p === p);
+        if(admin) {
+            currentAdmin = admin;
+            $("admin-welcome").innerText = `مرحباً ${admin.u} - الصلاحيات: ${admin.perms.map(x => permLabels[x] || x).join("، ")}`;
+            renderAdminTabs();
+            refreshAdminLists();
+            showScreen("screen-admin-main");
+        } else alert("وصول غير مصرح به!");
+    };
+
+    function canUse(perm) {
+        return perm === "any" || (currentAdmin && currentAdmin.perms && currentAdmin.perms.includes(perm));
+    }
+
+    function renderAdminTabs() {
+        const allowed = tabDefs.filter(t => canUse(t.perm));
+        $("admin-tabs").innerHTML = allowed.map((t, i) => `<button class="tab-btn ${i === 0 ? "active-tab" : ""}" onclick="switchAdminTab('${t.id}')">${t.label}</button>`).join("");
+        tabDefs.forEach(t => {
+            const pane = $(`tab-${t.id}`);
+            if(pane) pane.style.display = canUse(t.perm) ? "" : "none";
+        });
+        switchAdminTab(allowed[0]?.id || "dashboard");
+    }
+
+    window.switchAdminTab = (tabId) => {
+        document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.toggle("active-tab", btn.getAttribute("onclick")?.includes(`'${tabId}'`)));
+        document.querySelectorAll(".tab-pane").forEach(pane => pane.classList.remove("active-pane"));
+        const target = $(`tab-${tabId}`);
+        if(target) target.classList.add("active-pane");
+        if(tabId === "results") renderResults();
+        if(tabId === "approvals") renderAccessRequests("pending");
+        if(tabId === "couples") renderCoupleEditor();
+        if(tabId === "challenges") renderChallengeEditor();
+        if(tabId === "progress") renderProgressList();
+    };
+
+    function getPlayerProgress(user = currentUser) {
+        if(!state.progress || typeof state.progress !== "object") state.progress = {};
+        if(!user) user = "guest";
+        if(!state.progress[user]) state.progress[user] = { completedLevels: [], approvedLevels: [] };
+        if(!Array.isArray(state.progress[user].completedLevels)) state.progress[user].completedLevels = [];
+        if(!Array.isArray(state.progress[user].approvedLevels)) state.progress[user].approvedLevels = [];
+        return state.progress[user];
+    }
+
+    function isLevelCompleted(user, levelIndex) {
+        return getPlayerProgress(user).completedLevels.includes(levelIndex + 1);
+    }
+
+    function isPreviousLevelComplete(user, levelIndex) {
+        return levelIndex === 0 || getPlayerProgress(user).completedLevels.includes(levelIndex);
+    }
+
+    function hasLevelApproval(user, levelIndex) {
+        const p = getPlayerProgress(user);
+        return p.completedLevels.includes(levelIndex + 1) || p.approvedLevels.includes(levelIndex + 1);
+    }
+
+    function latestLevelRequest(user, levelIndex) {
+        const levelNo = levelIndex + 1;
+        return (state.accessRequests || [])
+            .filter(r => r.user === user && Number(r.level) === levelNo)
+            .sort((a, b) => String(b.isoTime || "").localeCompare(String(a.isoTime || "")))[0] || null;
+    }
+
+    function canStartLevel(user, levelIndex) {
+        return isPreviousLevelComplete(user, levelIndex) && hasLevelApproval(user, levelIndex);
+    }
+
+    window.requestLevelAccess = (levelIndex) => {
+        if(!currentUser) { alert("سجل دخولك أولاً"); return; }
+        if(!isPreviousLevelComplete(currentUser, levelIndex)) {
+            alert("الباب مغلق: يجب إنهاء المستوى السابق بالكامل قبل طلب تصريح جديد.");
+            return;
+        }
+        const latest = latestLevelRequest(currentUser, levelIndex);
+        if(latest && latest.status === "pending") {
+            alert("طلبك موجود بالفعل وينتظر قرار الإدارة.");
+            return;
+        }
+        const req = {
+            id: `REQ-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            user: currentUser,
+            level: levelIndex + 1,
+            levelTitle: state.levels[levelIndex].title,
+            status: "pending",
+            time: new Date().toLocaleString("ar-SA"),
+            isoTime: new Date().toISOString(),
+            decidedBy: "",
+            decidedAt: "",
+            reason: ""
+        };
+        if(!Array.isArray(state.accessRequests)) state.accessRequests = [];
+        state.accessRequests.unshift(req);
+        syncAndSave();
+        renderLevelMap();
+        alert("تم إرسال طلب التصريح للإدارة. انتظر الموافقة حتى يفتح الباب.");
+    };
+
+    window.showLevelMap = () => {
+        renderLevelMap();
+        showScreen("screen-levels");
+    };
+
+    function renderLevelMap() {
+        $("levels-grid").innerHTML = state.levels.map((lvl, i) => {
+            const completed = isLevelCompleted(currentUser, i);
+            const prevDone = isPreviousLevelComplete(currentUser, i);
+            const approved = hasLevelApproval(currentUser, i);
+            const latest = latestLevelRequest(currentUser, i);
+            const pending = latest && latest.status === "pending";
+            const rejected = latest && latest.status === "rejected";
+            let badge = "";
+            let action = "";
+            let lockedClass = "";
+
+            if(completed) {
+                badge = `<span class="pill status-approved">✅ مكتمل</span>`;
+                action = `<button class="secondary small" onclick="initGameSession('level-full', ${i})">إعادة المستوى</button>`;
+            } else if(!prevDone) {
+                lockedClass = "locked";
+                badge = `<span class="pill status-locked">🔒 مقفل</span>`;
+                action = `<button class="small" disabled>أكمل المستوى السابق</button>`;
+            } else if(pending) {
+                badge = `<span class="pill status-pending">⌛ بانتظار الإدارة</span>`;
+                action = `<button class="small" disabled>طلب التصريح تحت المراجعة</button>`;
+            } else if(approved) {
+                badge = `<span class="pill status-approved">🟢 مصرح بالدخول</span>`;
+                action = `<button class="gold small" onclick="initGameSession('level-full', ${i})">افتح الباب وابدأ</button>`;
+            } else if(rejected) {
+                badge = `<span class="pill status-rejected">⛔ مرفوض</span>`;
+                action = `<button class="danger small" onclick="requestLevelAccess(${i})">طلب تصريح جديد</button>`;
+            } else {
+                badge = `<span class="pill status-locked">🕯️ يحتاج تصريح</span>`;
+                action = `<button class="blue small" onclick="requestLevelAccess(${i})">طلب تصريح الإدارة</button>`;
+            }
+
+            return `
+                <div class="level-card ${lockedClass}">
+                    <span class="admin-badge">LEVEL ${i + 1}</span>
+                    <h3>${esc(lvl.title)}</h3>
+                    <p>${esc(lvl.desc)}</p>
+                    <div class="gate-line">${badge}<span class="pill">⚔️ ${lvl.challenges.length}/3</span><span class="pill">💞 ${lvl.coupleQuestions.length}/10</span></div>
+                    ${rejected && latest.reason ? `<p class="hint">سبب الرفض: ${esc(latest.reason)}</p>` : ""}
+                    ${action}
+                </div>
+            `;
+        }).join("");
+    }
+
+    function challengeToQueue(ch, levelIndex) {
+        return { ...ch, levelIndex, kind: "تحدي", modeKind: "challenge" };
+    }
+
+    function coupleToQueue(q, levelIndex) {
+        return { q, type: "coupleText", levelIndex, kind: "كبلز", modeKind: "couple" };
+    }
+
+    function buildQueue(levelIndex = 0) {
+        return [
+            ...state.levels[levelIndex].challenges.map(ch => challengeToQueue(ch, levelIndex)),
+            ...state.levels[levelIndex].coupleQuestions.map(q => coupleToQueue(q, levelIndex))
+        ];
+    }
+
+    window.initGameSession = (mode = "level-full", levelIndex = 0) => {
+        if(mode === "level-full" && !canStartLevel(currentUser, levelIndex)) {
+            alert("الباب لم يفتح بعد. تحتاج إكمال السابق والحصول على تصريح من الإدارة.");
+            showLevelMap();
+            return;
+        }
+        activeMode = mode;
+        activeLevelIndex = levelIndex;
+        activeQueue = buildQueue(levelIndex);
+        if(!activeQueue.length) { alert("لا يوجد أسئلة أو تحديات في هذا المستوى"); return; }
+        gameIdx = 0;
+        tempAnswers = [];
+        showScreen("screen-game");
+        renderQuestion();
+    };
 
     async function renderQuestion() {
-        const q = state.questions[gameIdx];
+        stopActiveMedia();
+        const q = activeQueue[gameIdx];
         if(!q) { finishGame(); return; }
-        document.getElementById('q-title').innerText = q.q;
-        const container = document.getElementById('q-interface');
+
+        $("q-title").innerText = q.q;
+        $("q-level-badge").innerText = `المستوى ${q.levelIndex + 1}: ${state.levels[q.levelIndex].title}`;
+        $("q-kind-badge").innerText = q.kind;
+        $("q-counter").innerText = `${gameIdx + 1} / ${activeQueue.length}`;
+        $("progress-fill").style.width = `${Math.round((gameIdx / activeQueue.length) * 100)}%`;
+        $("btn-next-q").style.display = "inline-block";
+
+        const container = $("q-interface");
         container.innerHTML = "";
-        
-        if(q.type === 'text') { container.innerHTML = `<input type="text" id="ans-field" placeholder="اكتب إجابتك هنا...">`; }
-        else if(q.type === 'options') {
-            q.opts.forEach(opt => { container.innerHTML += `<button onclick="saveAndNext('${opt}')" style="background:#555; width:80%">${opt}</button>`; });
-            document.getElementById('btn-next-q').style.display = "none";
-        } else if(q.type === 'camera') {
-            container.innerHTML = `<video id="video" autoplay playsinline></video><br><button onclick="capturePhoto()">📸 التقاط</button><canvas id="canvas" style="display:none;"></canvas>`;
-            try { const stream = await navigator.mediaDevices.getUserMedia({video: true}); document.getElementById('video').srcObject = stream; } catch(e) { alert("يجب السماح بالكاميرا"); }
-            document.getElementById('btn-next-q').style.display = "none";
-        } else if(q.type === 'draw') {
-            container.innerHTML = `<canvas id="sig-pad" class="signature-pad" width="300" height="200"></canvas><br><button onclick="clearPad()">مسح</button>`;
+
+        if(q.type === "text" || q.type === "coupleText") {
+            container.innerHTML = `<textarea id="ans-field" placeholder="اكتب إجابتك هنا..." style="min-height:150px;"></textarea>`;
+        } else if(q.type === "options") {
+            container.innerHTML = `<div id="options-box" class="grid grid-auto"></div>`;
+            const box = $("options-box");
+            (q.opts || []).forEach(opt => {
+                const btn = document.createElement("button");
+                btn.className = "secondary";
+                btn.textContent = opt;
+                btn.onclick = () => saveAndNext(opt);
+                box.appendChild(btn);
+            });
+            $("btn-next-q").style.display = "none";
+        } else if(q.type === "camera") {
+            container.innerHTML = `<video id="video" autoplay playsinline></video><br><button onclick="capturePhoto()" class="gold">📸 التقاط وحفظ</button><canvas id="canvas" style="display:none;"></canvas>`;
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                $("video").srcObject = activeStream;
+            } catch(e) { alert("يجب السماح بالكاميرا حتى يعمل هذا التحدي"); }
+            $("btn-next-q").style.display = "none";
+        } else if(q.type === "draw") {
+            container.innerHTML = `<canvas id="sig-pad" class="signature-pad" width="520" height="260"></canvas><br><button onclick="clearPad()" class="secondary">مسح</button>`;
             initSignature();
-        } else if(q.type === 'audio') {
+        } else if(q.type === "audio") {
             container.innerHTML = `
                 <div class="audio-recorder">
                     <p id="rec-status">جاهز للتسجيل...</p>
-                    <button id="btn-start-rec" onclick="startAudioRec()">🎙️ بدء التسجيل</button>
-                    <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none; background:black;">🛑 إيقاف وحفظ</button>
-                    <div id="audio-preview-container" style="display:none; margin-top:10px;">
-                        <audio id="audio-preview" controls></audio>
-                    </div>
+                    <button id="btn-start-rec" onclick="startAudioRec()" class="gold">🎙️ بدء التسجيل</button>
+                    <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none;" class="danger">🛑 إيقاف وحفظ</button>
+                    <div id="audio-preview-container" style="display:none; margin-top:10px;"><audio id="audio-preview" controls></audio></div>
                 </div>`;
-            document.getElementById('btn-next-q').style.display = "none";
+            $("btn-next-q").style.display = "none";
         }
-        if(q.type !== 'options' && q.type !== 'camera' && q.type !== 'audio') document.getElementById('btn-next-q').style.display = "inline-block";
     }
 
-    // --- منطق الصوت ---
     window.startAudioRec = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(activeStream);
             audioChunks = [];
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            mediaRecorder.ondataavailable = e => { if(e.data.size) audioChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
                     const base64Audio = reader.result;
-                    document.getElementById('audio-preview').src = base64Audio;
-                    document.getElementById('audio-preview-container').style.display = "block";
-                    const btnSave = document.createElement('button');
+                    $("audio-preview").src = base64Audio;
+                    const preview = $("audio-preview-container");
+                    preview.style.display = "block";
+                    preview.querySelectorAll("button").forEach(b => b.remove());
+                    const btnSave = document.createElement("button");
                     btnSave.innerText = "اعتمد التسجيل واكمل ➔";
-                    btnSave.style.background = "green";
+                    btnSave.className = "green";
                     btnSave.onclick = () => saveAndNext(base64Audio);
-                    document.getElementById('audio-preview-container').appendChild(btnSave);
+                    preview.appendChild(btnSave);
                 };
+                if(activeStream) activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
             };
             mediaRecorder.start();
-            document.getElementById('btn-start-rec').style.display = "none";
-            document.getElementById('btn-stop-rec').style.display = "inline-block";
-            document.getElementById('rec-status').innerText = "جاري التسجيل... 🔴";
-        } catch (e) { alert("يجب السماح بالمايكروفون"); }
+            $("btn-start-rec").style.display = "none";
+            $("btn-stop-rec").style.display = "inline-block";
+            $("rec-status").innerText = "جاري التسجيل... 🔴";
+        } catch (e) { alert("يجب السماح بالمايكروفون حتى يعمل هذا التحدي"); }
     };
 
     window.stopAudioRec = () => {
-        mediaRecorder.stop();
-        document.getElementById('btn-stop-rec').style.display = "none";
-        document.getElementById('rec-status').innerText = "تم التسجيل ✅";
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        if(mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            $("btn-stop-rec").style.display = "none";
+            $("rec-status").innerText = "تم التسجيل ✅";
+        }
     };
 
-    window.saveAndNext = (val) => { tempAnswers.push({question: state.questions[gameIdx].q, answer: val}); gameIdx++; renderQuestion(); };
+    window.saveAndNext = (val) => {
+        const q = activeQueue[gameIdx];
+        tempAnswers.push({
+            level: q.levelIndex + 1,
+            levelTitle: state.levels[q.levelIndex].title,
+            kind: q.kind,
+            type: q.type,
+            question: q.q,
+            answer: val
+        });
+        gameIdx++;
+        renderQuestion();
+    };
 
     window.processAnswer = () => {
-        const q = state.questions[gameIdx];
+        const q = activeQueue[gameIdx];
         let val = "";
-        if(q.type === 'text') val = document.getElementById('ans-field').value;
-        if(q.type === 'draw') val = document.getElementById('sig-pad').toDataURL();
-        if(val.trim() === "" && q.type === 'text') { alert("الرجاء الإجابة"); return; }
+        if(q.type === "text" || q.type === "coupleText") val = $("ans-field").value.trim();
+        if(q.type === "draw") val = $("sig-pad").toDataURL("image/png");
+        if((q.type === "text" || q.type === "coupleText") && val === "") { alert("الرجاء كتابة الإجابة"); return; }
         saveAndNext(val);
     };
 
     window.capturePhoto = () => {
-        const v = document.getElementById('video');
-        const c = document.getElementById('canvas');
-        if(!v || !c) return;
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
-        const data = c.toDataURL('image/webp');
-        if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
+        const v = $("video");
+        const c = $("canvas");
+        if(!v || !c || !v.srcObject) { alert("الكاميرا غير جاهزة"); return; }
+        c.width = v.videoWidth || 640;
+        c.height = v.videoHeight || 480;
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        const data = c.toDataURL("image/webp", 0.82);
+        stopActiveMedia();
         saveAndNext(data);
     };
 
+    window.confirmExitSession = () => {
+        if(confirm("هل تريد الخروج من الجولة الحالية؟ لن يتم حفظ الإجابات غير المكتملة.")) showLevelMap();
+    };
+
+    function dataUrlToBlob(dataUrl) {
+        const [meta, base64] = dataUrl.split(",");
+        const mime = (meta.match(/data:(.*?);base64/) || [])[1] || "application/octet-stream";
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for(let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: mime });
+    }
+
+    async function uploadDataUrlToStorage(dataUrl, folder, ext) {
+        const blob = dataUrlToBlob(dataUrl);
+        const safeUser = String(currentUser || "guest").replace(/[^\w\u0600-\u06FF-]+/g, "_");
+        const filePath = `${folder}/${safeUser}/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+        const fileRef = ref(storage, filePath);
+        await uploadBytes(fileRef, blob);
+        return await getDownloadURL(fileRef);
+    }
+
+    async function prepareAnswersForCloud(list) {
+        const prepared = [];
+        for(const item of list) {
+            const copy = { ...item };
+            const answer = String(copy.answer || "");
+            try {
+                if(answer.startsWith("data:image")) {
+                    const url = await uploadDataUrlToStorage(answer, "mystery-game-images", "webp");
+                    copy.answer = { kind: "image", url };
+                } else if(answer.startsWith("data:audio")) {
+                    const url = await uploadDataUrlToStorage(answer, "mystery-game-audio", "webm");
+                    copy.answer = { kind: "audio", url };
+                }
+            } catch(e) {
+                console.warn("Storage upload failed. Falling back to inline data.", e);
+                copy.answer = answer;
+            }
+            prepared.push(copy);
+        }
+        return prepared;
+    }
+
     async function finishGame() {
-        const resultEntry = {user: currentUser, time: new Date().toLocaleString(), data: tempAnswers};
-        state.results.push(resultEntry);
+        $("progress-fill").style.width = "100%";
+        setSaveState("جارٍ حفظ النتيجة والوسائط...");
+        const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
+        const resultEntry = {
+            user: currentUser,
+            mode: activeMode,
+            level: activeLevelIndex + 1,
+            levelTitle: state.levels[activeLevelIndex]?.title || "",
+            time: new Date().toLocaleString("ar-SA"),
+            isoTime: new Date().toISOString(),
+            total: preparedAnswers.length,
+            data: preparedAnswers
+        };
+
+        if(activeMode === "level-full" && activeLevelIndex !== null) {
+            const p = getPlayerProgress(currentUser);
+            const levelNo = activeLevelIndex + 1;
+            if(!p.completedLevels.includes(levelNo)) p.completedLevels.push(levelNo);
+            if(!p.approvedLevels.includes(levelNo)) p.approvedLevels.push(levelNo);
+            p.completedLevels.sort((a, b) => a - b);
+            p.approvedLevels.sort((a, b) => a - b);
+        }
+
+        saveLocalOnly();
+        await saveGameCloud();
+
         try {
-            await updateDoc(doc(db, "siteConfig", "results"), { allResults: arrayUnion(resultEntry) })
-            .catch(async () => { await setDoc(doc(db, "siteConfig", "results"), { allResults: [resultEntry] }); });
-        } catch(e) { console.log("Firebase Error", e); }
-        syncAndSave();
-        window.showScreen('screen-finish');
+            await addDoc(collection(db, RESULTS_COL), resultEntry);
+            setSaveState("تم حفظ النتيجة سحابياً ✅");
+        } catch(e) {
+            console.error("Result save failed", e);
+            setSaveState("تعذر حفظ النتيجة في السحابة");
+            alert("صار خطأ أثناء حفظ النتيجة في Firebase. راجع إعدادات Firestore/Storage.");
+        }
+
+        showScreen("screen-finish");
     }
-
-    window.syncVisuals = async () => {
-        state.config.logo = document.getElementById('conf-logo').value || state.config.logo;
-        state.config.bg = document.getElementById('conf-bg').value || state.config.bg;
-        state.config.title = document.getElementById('conf-title').value || state.config.title;
-        await setDoc(doc(db, "siteConfig", "main"), { logo: state.config.logo, bg: state.config.bg, title: state.config.title });
-        syncAndSave();
-        alert("تم التحديث سحابياً!");
-    };
-
-    function syncAndSave() {
-        localStorage.setItem('sahm_db', JSON.stringify(state));
-        refreshAdminLists();
-    }
-
-    function refreshAdminLists() {
-        if(document.getElementById('list-players')) {
-            document.getElementById('list-players').innerHTML = state.players.map((p, i) => `
-                <div class="row-item">
-                    <input type="text" id="edit-p-u-${i}" value="${p.u}" placeholder="الاسم">
-                    <input type="text" id="edit-p-p-${i}" value="${p.p}" placeholder="الباسورد">
-                    <div class="row-controls">
-                        <button onclick="updatePlayer(${i})" style="background:orange; font-size:0.8rem;">تحديث</button>
-                        <button onclick="state.players.splice(${i},1);syncAndSave()" style="background:red; font-size:0.8rem;">حذف</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        if(document.getElementById('list-admins')) {
-            document.getElementById('list-admins').innerHTML = state.admins.map((a, i) => `
-                <div class="row-item">
-                    <div><span class="admin-badge">RANK #${i+1}</span></div>
-                    <input type="text" id="edit-adm-u-${i}" value="${a.u}" placeholder="اسم المسؤول">
-                    <input type="text" id="edit-adm-p-${i}" value="${a.p}" placeholder="كلمة السر">
-                    <div class="perm-grid">
-                        ${['ui', 'players', 'questions', 'results', 'admins'].map(perm => `
-                            <label><input type="checkbox" class="edit-adm-perm-${i}" value="${perm}" ${a.perms.includes(perm) ? 'checked' : ''}> ${perm}</label>
-                        `).join('')}
-                    </div>
-                    <div class="row-controls">
-                        <button onclick="updateAdmin(${i})" style="background:orange; font-size:0.8rem;">تحديث الرتبة</button>
-                        <button onclick="state.admins.splice(${i},1);syncAndSave()" style="background:red; font-size:0.8rem;">حذف</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        if(document.getElementById('list-results')) {
-            document.getElementById('list-results').innerHTML = state.results.map(r => `
-                <div class="admin-section" style="font-size:0.8rem; text-align:right;">
-                    <b>اللاعب: ${r.user}</b> | ${r.time}
-                    <hr>
-                    ${r.data.map(d => {
-                        let content = d.answer;
-                        if(d.answer.startsWith('data:image')) content = `<br><img src="${d.answer}" style="width:100px; border:1px solid red;">`;
-                        else if(d.answer.startsWith('data:audio')) content = `<br><audio controls src="${d.answer}"></audio>`;
-                        return `<p><b>${d.question}:</b> ${content}</p>`;
-                    }).join('')}
-                </div>
-            `).join('');
-        }
-        
-        if(document.getElementById('list-questions')) {
-            document.getElementById('list-questions').innerHTML = state.questions.map((q, i) => `
-                <div class="row-item" style="font-size:0.8rem;">
-                    ${q.q} (${q.type})
-                    <button onclick="state.questions.splice(${i},1);syncAndSave()" style="background:red; padding:5px;">حذف</button>
-                </div>
-            `).join('');
-        }
-    }
-
-    window.checkQType = (v) => { document.getElementById('q-options-input').style.display = (v === 'options') ? 'block' : 'none'; };
-    
-    window.addPlayer = () => { 
-        const u = document.getElementById('p-new-name').value;
-        const p = document.getElementById('p-new-pass').value;
-        if(u && p) { state.players.push({u, p}); syncAndSave(); }
-    };
-
-    window.addQuestion = () => {
-        const qText = document.getElementById('q-new-text').value;
-        const qType = document.getElementById('q-new-type').value;
-        if(!qText) return;
-        const q = {q: qText, type: qType};
-        if(qType === 'options') q.opts = document.getElementById('q-opt-val').value.split(',');
-        state.questions.push(q);
-        syncAndSave();
-    };
 
     function initSignature() {
-        const canvas = document.getElementById('sig-pad');
+        const canvas = $("sig-pad");
         if(!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
         let drawing = false;
         const getPos = (e) => {
             const rect = canvas.getBoundingClientRect();
-            return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top };
+            const point = e.touches ? e.touches[0] : e;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return { x: (point.clientX - rect.left) * scaleX, y: (point.clientY - rect.top) * scaleY };
         };
-        const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
-        const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+        const start = (e) => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+        const move = (e) => { if(!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
         const stop = () => { drawing = false; };
         canvas.onmousedown = start; canvas.onmousemove = move; window.onmouseup = stop;
         canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = stop;
     }
 
     window.clearPad = () => {
-        const canvas = document.getElementById('sig-pad');
-        if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        const canvas = $("sig-pad");
+        if(canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     };
 
-    document.getElementById('display-logo').src = state.config.logo;
-    document.body.style.backgroundImage = `url('${state.config.bg}')`;
-    document.getElementById('tab-title').innerText = state.config.title;
+    window.syncVisuals = () => {
+        state.config.logo = $("conf-logo").value.trim() || state.config.logo;
+        state.config.bg = $("conf-bg").value.trim();
+        state.config.title = $("conf-title").value.trim() || state.config.title;
+        state.config.desc = $("conf-desc").value.trim() || state.config.desc;
+        state.config.primaryColor = $("conf-color").value || state.config.primaryColor;
+        const rules = $("conf-rules").value.split("\n").map(x => x.trim()).filter(Boolean);
+        if(rules.length) state.config.rules = rules;
+        syncAndSave();
+        alert("تم حفظ المظهر والقوانين للجميع");
+    };
+
+    window.toggleAllPerms = (src) => { document.querySelectorAll(".p-sub").forEach(cb => cb.checked = src.checked); };
+
+    window.createNewAdmin = () => {
+        const u = $("adm-new-name").value.trim();
+        const p = $("adm-new-pass").value;
+        const selected = Array.from(document.querySelectorAll(".p-sub:checked")).map(cb => cb.value);
+        if(!u || !p) { alert("اكتب اسم المسؤول وكلمة السر"); return; }
+        if(!selected.length) { alert("اختر صلاحية واحدة على الأقل"); return; }
+        if(state.admins.some(a => a.u === u)) { alert("اسم المسؤول موجود مسبقاً"); return; }
+        state.admins.push({u, p, perms: selected});
+        $("adm-new-name").value = ""; $("adm-new-pass").value = "";
+        document.querySelectorAll(".p-sub, #p-all").forEach(cb => cb.checked = false);
+        syncAndSave();
+    };
+
+    window.updateAdmin = (index) => {
+        const newU = $(`edit-adm-u-${index}`).value.trim();
+        const newP = $(`edit-adm-p-${index}`).value;
+        const newPerms = Array.from(document.querySelectorAll(`.edit-adm-perm-${index}:checked`)).map(cb => cb.value);
+        if(!newU || !newP || !newPerms.length) { alert("اكتمل الاسم والباسورد والصلاحيات"); return; }
+        state.admins[index] = { u: newU, p: newP, perms: newPerms };
+        syncAndSave();
+        alert("تم تحديث بيانات المسؤول للجميع");
+    };
+
+    window.deleteAdmin = (index) => {
+        if(state.admins.length <= 1) { alert("لا يمكن حذف آخر مسؤول"); return; }
+        if(confirm("حذف هذا المسؤول؟")) { state.admins.splice(index, 1); syncAndSave(); }
+    };
+
+    window.addPlayer = () => {
+        const u = $("p-new-name").value.trim();
+        const p = $("p-new-pass").value;
+        if(!u || !p) { alert("اكتب اسم اللاعب وكلمة المرور"); return; }
+        if(state.players.some(x => x.u === u)) { alert("اسم اللاعب موجود مسبقاً"); return; }
+        state.players.push({u, p});
+        $("p-new-name").value = ""; $("p-new-pass").value = "";
+        syncAndSave();
+    };
+
+    window.updatePlayer = (index) => {
+        const newU = $(`edit-p-u-${index}`).value.trim();
+        const newP = $(`edit-p-p-${index}`).value;
+        if(!newU || !newP) { alert("اكتب الاسم وكلمة المرور"); return; }
+        const oldU = state.players[index].u;
+        state.players[index] = { u: newU, p: newP };
+        if(oldU !== newU && state.progress[oldU]) {
+            state.progress[newU] = state.progress[oldU];
+            delete state.progress[oldU];
+        }
+        syncAndSave();
+        alert("تم تحديث اللاعب للجميع");
+    };
+
+    window.deletePlayer = (index) => {
+        const player = state.players[index];
+        if(confirm("حذف هذا اللاعب؟")) {
+            state.players.splice(index, 1);
+            if(player && state.progress[player.u]) delete state.progress[player.u];
+            syncAndSave();
+        }
+    };
+
+    function fillLevelSelects() {
+        const options = state.levels.map((lvl, i) => `<option value="${i}">المستوى ${i + 1} - ${esc(lvl.title)}</option>`).join("");
+        ["challenge-level-select", "couple-level-select"].forEach(id => { if($(id)) $(id).innerHTML = options; });
+        if($("result-filter-level")) $("result-filter-level").innerHTML = `<option value="">كل المستويات</option>` + state.levels.map((lvl, i) => `<option value="${i + 1}">المستوى ${i + 1}</option>`).join("");
+    }
+
+    function typeLabel(type) {
+        return ({ text: "نصي", options: "اختيارات", camera: "كاميرا 📸", draw: "توقيع ✍️", audio: "تسجيل صوتي 🎤", coupleText: "كبلز نصي" })[type] || type;
+    }
+
+    window.renderChallengeEditor = () => {
+        if(!$("challenge-level-select")) return;
+        const idx = Number($("challenge-level-select").value || 0);
+        const lvl = state.levels[idx];
+        $("list-challenges").innerHTML = `
+            <div class="row-item">
+                <h4>بيانات المستوى</h4>
+                <input id="lvl-title-${idx}" value="${esc(lvl.title)}" placeholder="عنوان المستوى">
+                <textarea id="lvl-desc-${idx}" placeholder="وصف المستوى">${esc(lvl.desc)}</textarea>
+                <button onclick="updateLevelMeta(${idx})" class="gold">حفظ بيانات المستوى للجميع</button>
+            </div>
+            ${lvl.challenges.map((ch, i) => `
+                <div class="row-item">
+                    <span class="admin-badge">تحدي ${i + 1} من 3</span>
+                    <input type="text" id="edit-ch-q-${idx}-${i}" value="${esc(ch.q)}" placeholder="نص التحدي">
+                    <select id="edit-ch-type-${idx}-${i}" onchange="toggleChallengeOpts(${idx}, ${i})">
+                        ${["text", "options", "camera", "draw", "audio"].map(t => `<option value="${t}" ${ch.type === t ? "selected" : ""}>${typeLabel(t)}</option>`).join("")}
+                    </select>
+                    <input type="text" id="edit-ch-opts-${idx}-${i}" value="${esc((ch.opts || []).join(","))}" placeholder="خيارات مفصولة بفاصلة ," style="display:${ch.type === "options" ? "block" : "none"};">
+                    <div class="row-controls">
+                        <button onclick="updateChallenge(${idx}, ${i})" class="small gold">حفظ التحدي</button>
+                        <button onclick="deleteChallenge(${idx}, ${i})" class="small danger">حذف</button>
+                    </div>
+                </div>
+            `).join("")}
+        `;
+        $("ch-new-text").placeholder = lvl.challenges.length >= 3 ? "وصلت للحد الأقصى 3 تحديات" : "نص التحدي";
+    };
+
+    window.toggleChallengeOpts = (levelIdx, chIdx) => {
+        const t = $(`edit-ch-type-${levelIdx}-${chIdx}`).value;
+        $(`edit-ch-opts-${levelIdx}-${chIdx}`).style.display = t === "options" ? "block" : "none";
+    };
+
+    window.toggleNewChallengeOpts = () => {
+        $("ch-new-opts").style.display = $("ch-new-type").value === "options" ? "block" : "none";
+    };
+
+    window.updateLevelMeta = (idx) => {
+        state.levels[idx].title = $(`lvl-title-${idx}`).value.trim() || state.levels[idx].title;
+        state.levels[idx].desc = $(`lvl-desc-${idx}`).value.trim() || state.levels[idx].desc;
+        syncAndSave();
+        fillLevelSelects();
+        renderChallengeEditor();
+    };
+
+    window.updateChallenge = (levelIdx, chIdx) => {
+        const q = $(`edit-ch-q-${levelIdx}-${chIdx}`).value.trim();
+        const type = $(`edit-ch-type-${levelIdx}-${chIdx}`).value;
+        if(!q) { alert("اكتب نص التحدي"); return; }
+        const ch = { q, type };
+        if(type === "options") ch.opts = $(`edit-ch-opts-${levelIdx}-${chIdx}`).value.split(",").map(x => x.trim()).filter(Boolean);
+        if(type === "options" && !ch.opts.length) { alert("اكتب خيارات للتحدي"); return; }
+        state.levels[levelIdx].challenges[chIdx] = ch;
+        syncAndSave();
+        alert("تم حفظ التحدي للجميع");
+    };
+
+    window.deleteChallenge = (levelIdx, chIdx) => {
+        if(confirm("حذف هذا التحدي؟")) {
+            state.levels[levelIdx].challenges.splice(chIdx, 1);
+            syncAndSave();
+            renderChallengeEditor();
+        }
+    };
+
+    window.addChallengeToSelectedLevel = () => {
+        const idx = Number($("challenge-level-select").value || 0);
+        if(state.levels[idx].challenges.length >= 3) { alert("كل مستوى له 3 تحديات فقط"); return; }
+        const q = $("ch-new-text").value.trim();
+        const type = $("ch-new-type").value;
+        if(!q) { alert("اكتب نص التحدي"); return; }
+        const ch = { q, type };
+        if(type === "options") ch.opts = $("ch-new-opts").value.split(",").map(x => x.trim()).filter(Boolean);
+        if(type === "options" && !ch.opts.length) { alert("اكتب خيارات مفصولة بفاصلة"); return; }
+        state.levels[idx].challenges.push(ch);
+        $("ch-new-text").value = ""; $("ch-new-opts").value = "";
+        syncAndSave();
+        renderChallengeEditor();
+    };
+
+    window.renderCoupleEditor = () => {
+        if(!$("couple-level-select")) return;
+        const idx = Number($("couple-level-select").value || 0);
+        const qs = state.levels[idx].coupleQuestions || [];
+        $("couple-questions-editor").value = qs.join("\n");
+        $("couple-count-hint").innerText = `عدد أسئلة هذا المستوى: ${qs.length} / 10`;
+    };
+
+    window.saveCoupleQuestions = () => {
+        const idx = Number($("couple-level-select").value || 0);
+        let qs = $("couple-questions-editor").value.split("\n").map(x => x.trim()).filter(Boolean);
+        if(qs.length > 10) {
+            alert("تم حفظ أول 10 أسئلة فقط لأن الحد 10 لكل مستوى");
+            qs = qs.slice(0, 10);
+        }
+        if(qs.length < 10 && !confirm(`كتبت ${qs.length} فقط. هل تريد الحفظ بهذا العدد؟`)) return;
+        state.levels[idx].coupleQuestions = qs;
+        syncAndSave();
+        renderCoupleEditor();
+        alert("تم حفظ أسئلة الكبلز للجميع");
+    };
+
+    window.fillCoupleLevelToTen = () => {
+        const idx = Number($("couple-level-select").value || 0);
+        let qs = $("couple-questions-editor").value.split("\n").map(x => x.trim()).filter(Boolean).slice(0, 10);
+        const def = defaultLevels()[idx].coupleQuestions;
+        while(qs.length < 10) qs.push(def[qs.length] || `سؤال كبلز ${qs.length + 1}`);
+        $("couple-questions-editor").value = qs.join("\n");
+        $("couple-count-hint").innerText = `عدد الأسئلة الحالي: ${qs.length} / 10`;
+    };
+
+    window.renderAccessRequests = (filter = "pending") => {
+        const all = Array.isArray(state.accessRequests) ? state.accessRequests : [];
+        const list = filter ? all.filter(r => r.status === filter) : all;
+        const label = filter === "pending" ? "المعلقة" : filter === "approved" ? "الموافق عليها" : "المرفوضة";
+        if(!$("list-access-requests")) return;
+        if(!list.length) {
+            $("list-access-requests").innerHTML = `<div class="admin-section"><h3>لا توجد طلبات ${label}</h3><p class="hint">طلبات اللاعبين لفتح المستويات ستظهر هنا.</p></div>`;
+            return;
+        }
+        $("list-access-requests").innerHTML = list.map(req => `
+            <div class="result-box">
+                <h3>🕯️ ${esc(req.user)} — المستوى ${esc(req.level)}</h3>
+                <p class="hint">${esc(req.levelTitle || "")} — ${esc(req.time || "")}</p>
+                <div class="gate-line">
+                    <span class="pill ${req.status === "pending" ? "status-pending" : req.status === "approved" ? "status-approved" : "status-rejected"}">${req.status === "pending" ? "⌛ معلق" : req.status === "approved" ? "✅ مقبول" : "⛔ مرفوض"}</span>
+                    ${req.decidedBy ? `<span class="pill">بواسطة: ${esc(req.decidedBy)}</span>` : ""}
+                </div>
+                ${req.reason ? `<p class="hint">سبب الرفض: ${esc(req.reason)}</p>` : ""}
+                ${req.status === "pending" ? `
+                    <div class="row-controls">
+                        <button onclick="setAccessRequestStatus('${req.id}', 'approved')" class="green small">فتح المستوى</button>
+                        <button onclick="setAccessRequestStatus('${req.id}', 'rejected')" class="danger small">رفض التصريح</button>
+                    </div>
+                ` : ""}
+            </div>
+        `).join("");
+    };
+
+    window.setAccessRequestStatus = (requestId, status) => {
+        const req = (state.accessRequests || []).find(r => r.id === requestId);
+        if(!req) return;
+        let reason = "";
+        if(status === "rejected") reason = prompt("اكتب سبب الرفض للاعب، أو اتركه فارغاً:") || "";
+        req.status = status;
+        req.decidedBy = currentAdmin ? currentAdmin.u : "admin";
+        req.decidedAt = new Date().toLocaleString("ar-SA");
+        req.reason = reason;
+        if(status === "approved") {
+            const p = getPlayerProgress(req.user);
+            const levelNo = Number(req.level);
+            if(!p.approvedLevels.includes(levelNo)) p.approvedLevels.push(levelNo);
+            p.approvedLevels.sort((a, b) => a - b);
+        }
+        syncAndSave();
+        renderAccessRequests(status === "approved" ? "approved" : status === "rejected" ? "rejected" : "pending");
+    };
+
+    function renderDashboard() {
+        if(!$("dashboard-stats")) return;
+        const totalChallenges = state.levels.reduce((sum, l) => sum + l.challenges.length, 0);
+        const totalCouples = state.levels.reduce((sum, l) => sum + l.coupleQuestions.length, 0);
+        const pendingRequests = (state.accessRequests || []).filter(r => r.status === "pending").length;
+        $("dashboard-stats").innerHTML = `
+            <div class="stat-card"><span class="pill">🗺️</span><h2>${state.levels.length}</h2><b>مستويات</b></div>
+            <div class="stat-card"><span class="pill">⚔️</span><h2>${totalChallenges}</h2><b>تحديات</b></div>
+            <div class="stat-card"><span class="pill">💞</span><h2>${totalCouples}</h2><b>أسئلة كبلز</b></div>
+            <div class="stat-card"><span class="pill">👥</span><h2>${state.players.length}</h2><b>لاعبين</b></div>
+            <div class="stat-card"><span class="pill">🕯️</span><h2>${pendingRequests}</h2><b>طلبات تصريح</b></div>
+            <div class="stat-card"><span class="pill">📥</span><h2>${results.length}</h2><b>نتائج</b></div>
+            <div class="stat-card"><span class="pill">🛡️</span><h2>${state.admins.length}</h2><b>مسؤولين</b></div>
+        `;
+    }
+
+    function renderAppearanceFields() {
+        if(!$("conf-logo")) return;
+        $("conf-logo").value = state.config.logo || "";
+        $("conf-bg").value = state.config.bg || "";
+        $("conf-title").value = state.config.title || "";
+        $("conf-desc").value = state.config.desc || "";
+        $("conf-rules").value = (state.config.rules || []).join("\n");
+        $("conf-color").value = state.config.primaryColor || "#8B0000";
+    }
+
+    function refreshAdminLists() {
+        renderDashboard();
+        renderAppearanceFields();
+        fillLevelSelects();
+
+        if($("list-access-requests")) renderAccessRequests("pending");
+        if($("list-progress")) renderProgressList();
+
+        if($("list-players")) {
+            $("list-players").innerHTML = state.players.map((p, i) => `
+                <div class="row-item">
+                    <span class="admin-badge">PLAYER #${i + 1}</span>
+                    <div class="inline-fields">
+                        <input type="text" id="edit-p-u-${i}" value="${esc(p.u)}" placeholder="الاسم">
+                        <input type="text" id="edit-p-p-${i}" value="${esc(p.p)}" placeholder="كلمة المرور">
+                    </div>
+                    <div class="row-controls">
+                        <button onclick="updatePlayer(${i})" class="small gold">تحديث</button>
+                        <button onclick="deletePlayer(${i})" class="small danger">حذف</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        if($("list-admins")) {
+            $("list-admins").innerHTML = state.admins.map((a, i) => `
+                <div class="row-item">
+                    <div><span class="admin-badge">RANK #${i + 1}</span></div>
+                    <div class="inline-fields">
+                        <input type="text" id="edit-adm-u-${i}" value="${esc(a.u)}" placeholder="اسم المسؤول">
+                        <input type="text" id="edit-adm-p-${i}" value="${esc(a.p)}" placeholder="كلمة السر">
+                    </div>
+                    <div class="perm-grid">
+                        ${["ui", "players", "approvals", "questions", "progress", "results", "admins"].map(perm => `
+                            <label><input type="checkbox" class="edit-adm-perm-${i}" value="${perm}" ${(a.perms || []).includes(perm) ? "checked" : ""}> ${permLabels[perm]}</label>
+                        `).join("")}
+                    </div>
+                    <div class="row-controls">
+                        <button onclick="updateAdmin(${i})" class="small gold">تحديث الرتبة</button>
+                        <button onclick="deleteAdmin(${i})" class="small danger">حذف</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        if($("list-challenges")) renderChallengeEditor();
+        if($("couple-questions-editor")) renderCoupleEditor();
+        if($("list-results")) renderResults();
+    }
+
+    window.renderProgressList = () => {
+        if(!$("list-progress")) return;
+        if(!state.players.length) {
+            $("list-progress").innerHTML = `<div class="admin-section"><h3>لا يوجد لاعبين</h3></div>`;
+            return;
+        }
+        $("list-progress").innerHTML = state.players.map(p => {
+            const prog = getPlayerProgress(p.u);
+            return `
+                <div class="result-box">
+                    <h3>🧭 ${esc(p.u)}</h3>
+                    <p class="hint">المكتملة: ${prog.completedLevels.length ? prog.completedLevels.join("، ") : "لا يوجد"} | المصرح بها: ${prog.approvedLevels.length ? prog.approvedLevels.join("، ") : "لا يوجد"}</p>
+                    <div class="row-controls">
+                        <button onclick="approveNextLevelForPlayer('${esc(p.u)}')" class="green small">فتح المستوى التالي</button>
+                        <button onclick="resetPlayerProgress('${esc(p.u)}')" class="danger small">تصفير التقدم</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    };
+
+    window.approveNextLevelForPlayer = (user) => {
+        const prog = getPlayerProgress(user);
+        const maxCompleted = prog.completedLevels.length ? Math.max(...prog.completedLevels) : 0;
+        const next = Math.min(maxCompleted + 1, 10);
+        if(!prog.approvedLevels.includes(next)) prog.approvedLevels.push(next);
+        prog.approvedLevels.sort((a, b) => a - b);
+        syncAndSave();
+        alert(`تم فتح المستوى ${next} للاعب ${user}`);
+    };
+
+    window.resetPlayerProgress = (user) => {
+        if(confirm(`تصفير تقدم ${user}؟`)) {
+            state.progress[user] = { completedLevels: [], approvedLevels: [] };
+            syncAndSave();
+        }
+    };
+
+    window.renderResults = () => {
+        if(!$("list-results")) return;
+        const player = ($("result-filter-player")?.value || "").trim().toLowerCase();
+        const level = $("result-filter-level")?.value || "";
+
+        let list = [...results];
+        if(player) list = list.filter(r => String(r.user || "").toLowerCase().includes(player));
+        if(level) list = list.filter(r => String(r.level || "") === String(level) || (r.data || []).some(d => String(d.level) === String(level)));
+
+        if(!list.length) {
+            $("list-results").innerHTML = `<div class="admin-section"><h3>لا توجد نتائج مطابقة</h3><p class="hint">ستظهر نتائج اللاعبين هنا بعد إنهاء الجولات.</p></div>`;
+            return;
+        }
+
+        $("list-results").innerHTML = list.map((r, idx) => `
+            <div class="result-box">
+                <h3>📌 ${esc(r.user || "لاعب")} — المستوى ${esc(r.level || "")}</h3>
+                <p class="hint">${esc(r.levelTitle || "")} — ${esc(r.time || "")} — عدد الإجابات: ${r.total || (r.data || []).length}</p>
+                <details ${idx === 0 ? "open" : ""}>
+                    <summary style="cursor:pointer; font-weight:bold; color:var(--primary-red);">عرض التفاصيل</summary>
+                    ${(r.data || []).map(d => `
+                        <div style="border-top:1px solid var(--line); padding:10px 0;">
+                            <b>المستوى ${esc(d.level)} - ${esc(d.kind)}:</b> ${esc(d.question)}
+                            <div style="margin-top:8px;">${renderAnswer(d.answer)}</div>
+                        </div>
+                    `).join("")}
+                </details>
+            </div>
+        `).join("");
+    };
+
+    function renderAnswer(answer = "") {
+        if(answer && typeof answer === "object") {
+            if(answer.kind === "image") return `<img src="${esc(answer.url)}" class="answer-media" alt="answer image">`;
+            if(answer.kind === "audio") return `<audio controls src="${esc(answer.url)}"></audio>`;
+        }
+        const a = String(answer || "");
+        if(a.startsWith("data:image")) return `<img src="${a}" class="answer-media" alt="answer image">`;
+        if(a.startsWith("data:audio")) return `<audio controls src="${a}"></audio>`;
+        return `<p style="white-space:pre-wrap; margin:0;">${esc(a)}</p>`;
+    }
+
+    window.exportResults = () => {
+        const data = JSON.stringify(results, null, 2);
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `sahm-results-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    window.clearResultsConfirm = async () => {
+        if(!confirm("مسح كل النتائج من قاعدة البيانات؟ لا يمكن التراجع.")) return;
+        try {
+            const snap = await getDocs(collection(db, RESULTS_COL));
+            const batch = writeBatch(db);
+            snap.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            results = [];
+            renderResults();
+            renderDashboard();
+            alert("تم مسح النتائج");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر مسح النتائج. راجع صلاحيات Firestore.");
+        }
+    };
+
+    applyVisuals();
+    refreshAdminLists();
 </script>
 
 </body>
