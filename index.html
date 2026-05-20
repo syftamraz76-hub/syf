@@ -3,6 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="لعبة الغموض - مستويات، تحديات، تصاريح، وأسئلة كبلز بنظام غامض.">
+    <meta name="theme-color" content="#8B0000">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ar_SA">
+    <meta property="og:title" content="لعبة الغموض - نظام سهم المطور">
+    <meta property="og:description" content="ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.">
+    <meta property="og:image" content="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fshare-card.png?alt=media">
+    <meta property="og:image:secure_url" content="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fshare-card.png?alt=media">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="لعبة الغموض - نظام سهم المطور">
+    <meta name="twitter:description" content="ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.">
+    <meta name="twitter:image" content="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fshare-card.png?alt=media">
+    <link rel="icon" type="image/png" href="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media">
+    <link rel="apple-touch-icon" href="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media">
     <title id="tab-title">لعبة الغموض - نظام سهم المطور</title>
     <style>
         :root {
@@ -11,7 +28,6 @@
             --text-dark: #261c1c;
             --muted: #746666;
             --container-bg: rgba(255, 255, 255, 0.94);
-            --glass: rgba(255, 255, 255, 0.78);
             --gold: #D4AF37;
             --soft-gold: rgba(212, 175, 55, 0.18);
             --line: rgba(139, 0, 0, 0.18);
@@ -85,7 +101,6 @@
             overflow: hidden;
             background: #fff;
             box-shadow: 0 12px 30px rgba(0,0,0,0.24);
-            position: relative;
         }
 
         .logo-container img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -104,7 +119,7 @@
             border-radius: 22px;
             padding: 24px;
             margin: 18px auto;
-            max-width: 780px;
+            max-width: 850px;
         }
 
         .pill {
@@ -172,6 +187,7 @@
             margin-top: 18px;
             text-align: right;
         }
+
         .level-card, .stat-card, .row-item, .admin-section {
             background: rgba(255,255,255,0.9);
             border: 1px solid var(--line);
@@ -179,6 +195,7 @@
             padding: 16px;
             box-shadow: 0 10px 24px rgba(0,0,0,0.07);
         }
+
         .level-card {
             position: relative;
             overflow: hidden;
@@ -187,17 +204,6 @@
             filter: grayscale(0.65);
             opacity: 0.78;
         }
-        .gate-line {
-            display: flex;
-            gap: 7px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin: 10px 0;
-        }
-        .status-pending { background: rgba(25, 74, 150, 0.12); border-color: rgba(25,74,150,0.35); color: #123e80; }
-        .status-approved { background: rgba(16, 114, 63, 0.13); border-color: rgba(16,114,63,0.38); color: #075b31; }
-        .status-rejected { background: rgba(181, 18, 34, 0.11); border-color: rgba(181,18,34,0.34); color: #7a0712; }
-        .status-locked { background: rgba(30,30,30,0.10); border-color: rgba(30,30,30,0.25); color: #333; }
         .level-card::after {
             content: "";
             position: absolute;
@@ -208,8 +214,19 @@
             border-radius: 50%;
             background: rgba(212,175,55,0.18);
         }
-        .level-card h3 { margin-bottom: 7px; }
-        .level-card p { color: var(--muted); margin: 6px 0 12px; font-size: 0.92rem; }
+
+        .gate-line {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .status-pending { background: rgba(25, 74, 150, 0.12); border-color: rgba(25,74,150,0.35); color: #123e80; }
+        .status-approved { background: rgba(16, 114, 63, 0.13); border-color: rgba(16,114,63,0.38); color: #075b31; }
+        .status-rejected { background: rgba(181, 18, 34, 0.11); border-color: rgba(181,18,34,0.34); color: #7a0712; }
+        .status-locked { background: rgba(30,30,30,0.10); border-color: rgba(30,30,30,0.25); color: #333; }
 
         .progress-wrap {
             background: rgba(139,0,0,0.12);
@@ -321,10 +338,47 @@
         }
         .perm-grid label { display: flex; align-items: center; gap: 7px; font-size: 0.86rem; cursor: pointer; }
         .perm-grid input { width: auto; margin: 0; }
+
         .admin-badge { background: var(--gold); color: #000; padding: 3px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 900; }
         .hint { color: var(--muted); font-size: 0.88rem; margin: 6px 0; }
+        .logo-uploader {
+            background: linear-gradient(135deg, rgba(139,0,0,0.07), rgba(212,175,55,0.13));
+            border: 1px dashed rgba(139,0,0,0.35);
+            border-radius: 18px;
+            padding: 14px;
+            margin: 10px 0;
+        }
+        .logo-preview-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .logo-preview-row img {
+            width: 76px;
+            height: 76px;
+            border-radius: 18px;
+            object-fit: cover;
+            border: 2px solid var(--gold);
+            background: white;
+        }
         .result-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 10px 0; }
-        .answer-media { max-width: 180px; border-radius: 10px; border: 1px solid var(--line); }
+        .answer-media { max-width: 220px; border-radius: 10px; border: 1px solid var(--line); }
+
+        .save-state {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 2000;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+            display: none;
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
@@ -341,6 +395,8 @@
 </head>
 <body>
 
+<div id="save-state" class="save-state">جارٍ الحفظ...</div>
+
 <div class="container" id="main-app">
     <div class="logo-container">
         <img id="display-logo" src="https://via.placeholder.com/140" alt="Logo">
@@ -351,6 +407,7 @@
             <span class="pill">🎮 10 مستويات</span>
             <span class="pill">⚔️ 30 تحدي</span>
             <span class="pill">💞 100 سؤال كبلز</span>
+            <span class="pill status-approved">☁️ حفظ سحابي دائم</span>
             <h1>👤 دخول اللاعبين</h1>
             <input type="text" id="login-user" placeholder="اسم المستخدم">
             <input type="password" id="login-pass" placeholder="كلمة المرور">
@@ -373,7 +430,7 @@
             <h1 id="start-title">مرحباً بك</h1>
             <p id="start-desc">أنت على وشك دخول منطقة الغموض..</p>
             <div class="grid grid-auto" style="margin-top:14px;">
-                <div class="stat-card"><b>المستويات</b><h2>10</h2><span class="hint">تدرج من السهل إلى العميق</span></div>
+                <div class="stat-card"><b>المستويات</b><h2>10</h2><span class="hint">كل مستوى له باب وتصريح</span></div>
                 <div class="stat-card"><b>التحديات</b><h2>30</h2><span class="hint">3 تحديات في كل مستوى</span></div>
                 <div class="stat-card"><b>أسئلة الكبلز</b><h2>100</h2><span class="hint">10 أسئلة نصية لكل مستوى</span></div>
             </div>
@@ -392,11 +449,10 @@
     </div>
 
     <div id="screen-levels" class="screen">
-        <h1>🗺️ خريطة اللعبة</h1>
-        <p class="hint">اختر مستوى محدد، أو ابدأ التحدي الكامل. أسئلة الكبلز منفصلة عن التحديات وكلها إجابات نصية.</p>
+        <h1>🗺️ خريطة الأبواب المغلقة</h1>
         <div class="hero-card" style="text-align:right;">
-            <h3>🕯️ نظام الأبواب المغلقة</h3>
-            <p>كل مستوى لا يفتح إلا بشرطين: إكمال المستوى السابق بالكامل، ثم قبول تصريح الدخول من الإدارة. إذا تم رفض التصريح يبقى الباب مغلقاً.</p>
+            <h3>🕯️ نظام التصريح</h3>
+            <p>كل مستوى لا يفتح إلا بعد إكمال المستوى السابق بالكامل، ثم قبول تصريح الدخول من الإدارة. إذا تم رفض التصريح يبقى الباب مغلقاً حتى ترسل طلباً جديداً.</p>
             <span class="pill status-locked">🔒 مقفل</span>
             <span class="pill status-pending">⌛ بانتظار الإدارة</span>
             <span class="pill status-approved">✅ مصرح</span>
@@ -424,8 +480,8 @@
 
     <div id="screen-finish" class="screen">
         <div class="hero-card">
-            <h1>✅ تمت المهمة</h1>
-            <p>تم حفظ نتيجتك داخل النظام، ويمكن للمسؤول مراجعتها من تبويب النتائج.</p>
+            <h1>✅ تم ختم المستوى</h1>
+            <p>تم حفظ النتيجة والتقدم في قاعدة البيانات السحابية. يمكنك الآن طلب تصريح المستوى التالي.</p>
             <button onclick="showLevelMap()">العودة للمستويات</button>
             <button class="secondary" onclick="location.reload()">خروج</button>
         </div>
@@ -434,7 +490,7 @@
     <div id="screen-admin-main" class="screen admin-panel">
         <div class="admin-top">
             <div>
-                <h2 style="margin-bottom:5px;">⚙️ لوحة سهم المطور</h2>
+                <h2 style="margin-bottom:5px;">⚙️ لوحة سهم المطور السحابية</h2>
                 <span class="hint" id="admin-welcome">إدارة اللعبة</span>
             </div>
             <button onclick="location.reload()" class="secondary small">تسجيل خروج</button>
@@ -445,21 +501,31 @@
         <div id="tab-dashboard" class="tab-pane">
             <div class="grid grid-auto" id="dashboard-stats"></div>
             <div class="admin-section">
-                <h3>🔥 ملاحظات مهمة</h3>
-                <p class="hint">اللعبة مقسمة إلى 10 مستويات. كل مستوى له 3 تحديات و10 أسئلة كبلز نصية. التعديل كله من التبويبات بدون فتح الكود.</p>
+                <h3>☁️ قاعدة البيانات</h3>
+                <p class="hint">كل تعديل تحفظه هنا ينتقل مباشرة لكل من فتح الموقع، ويبقى محفوظاً داخل Firebase حتى لو أغلقت الموقع ورجعت لاحقاً.</p>
             </div>
         </div>
 
         <div id="tab-appearance" class="tab-pane">
             <div class="admin-section">
                 <h3>🎨 المظهر العام</h3>
-                <input type="text" id="conf-logo" placeholder="رابط اللوجو">
+                <div class="logo-uploader">
+                    <h4>🏷️ شعار الموقع والمشاركة</h4>
+                    <p class="hint">ارفع شعارك هنا. سيتم حفظه في Firebase Storage ويظهر عند كل اللاعبين، ويستخدم أيضاً كأيقونة للموقع وبطاقة عند مشاركة الرابط.</p>
+                    <input type="file" id="conf-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                    <button onclick="uploadSiteLogo()" class="gold">رفع الشعار واعتماده للجميع</button>
+                    <div class="logo-preview-row">
+                        <img id="conf-logo-preview" src="https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media" alt="Logo Preview">
+                        <span class="hint" id="logo-upload-status">يفضل صورة مربعة PNG أو WebP. سيتم إنشاء صورة مشاركة 1200×630 تلقائياً.</span>
+                    </div>
+                </div>
+                <input type="text" id="conf-logo" placeholder="رابط اللوجو - اختياري إذا عندك رابط مباشر">
                 <input type="text" id="conf-bg" placeholder="رابط الخلفية - اتركه فارغ لاستخدام الخلفية الفخمة">
                 <input type="text" id="conf-title" placeholder="عنوان اللعبة">
                 <textarea id="conf-desc" placeholder="وصف البداية"></textarea>
                 <textarea id="conf-rules" placeholder="القوانين - كل قانون في سطر"></textarea>
                 <input type="color" id="conf-color" title="لون اللعبة الأساسي" style="height:48px; padding:5px;">
-                <button onclick="syncVisuals()" class="gold">حفظ المظهر والقوانين</button>
+                <button onclick="syncVisuals()" class="gold">حفظ المظهر والقوانين للجميع</button>
             </div>
         </div>
 
@@ -517,11 +583,19 @@
                 <select id="couple-level-select" onchange="renderCoupleEditor()"></select>
                 <textarea id="couple-questions-editor" style="min-height:310px;" placeholder="اكتب 10 أسئلة، كل سؤال في سطر"></textarea>
                 <div class="grid grid-2">
-                    <button onclick="saveCoupleQuestions()" class="gold">حفظ أسئلة هذا المستوى</button>
+                    <button onclick="saveCoupleQuestions()" class="gold">حفظ أسئلة هذا المستوى للجميع</button>
                     <button onclick="fillCoupleLevelToTen()" class="secondary">إكمال الفراغات إلى 10</button>
                 </div>
                 <p class="hint" id="couple-count-hint"></p>
             </div>
+        </div>
+
+        <div id="tab-progress" class="tab-pane">
+            <div class="admin-section">
+                <h3>🧭 تقدم اللاعبين</h3>
+                <p class="hint">هنا تشوف المستويات المكتملة والتصاريح المفتوحة لكل لاعب، وتقدر تصفر تقدمه إذا احتجت.</p>
+            </div>
+            <div id="list-progress"></div>
         </div>
 
         <div id="tab-results" class="tab-pane">
@@ -529,20 +603,10 @@
                 <h3>📥 النتائج الواردة</h3>
                 <div class="grid grid-3">
                     <input type="text" id="result-filter-player" placeholder="فلترة باسم اللاعب" oninput="renderResults()">
-                    <select id="result-filter-mode" onchange="renderResults()">
-                        <option value="">كل الأنواع</option>
-                        <option value="level-full">مستوى كامل</option>
-                        <option value="full">اللعبة الكاملة القديمة</option>
-                        <option value="challenges-all">كل التحديات</option>
-                        <option value="level-challenges">تحديات مستوى</option>
-                        <option value="level-couples">كبلز مستوى</option>
-                    </select>
                     <select id="result-filter-level" onchange="renderResults()"><option value="">كل المستويات</option></select>
-                </div>
-                <div class="grid grid-2">
                     <button onclick="exportResults()" class="blue">تصدير النتائج JSON</button>
-                    <button onclick="clearResultsConfirm()" class="danger">مسح النتائج</button>
                 </div>
+                <button onclick="clearResultsConfirm()" class="danger full">مسح كل النتائج من قاعدة البيانات</button>
             </div>
             <div id="list-results"></div>
         </div>
@@ -560,6 +624,7 @@
                     <label><input type="checkbox" class="p-sub" value="players"> اللاعبين</label>
                     <label><input type="checkbox" class="p-sub" value="approvals"> التصاريح</label>
                     <label><input type="checkbox" class="p-sub" value="questions"> التحديات والأسئلة</label>
+                    <label><input type="checkbox" class="p-sub" value="progress"> التقدم</label>
                     <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
                     <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
                 </div>
@@ -574,7 +639,24 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+        getFirestore,
+        doc,
+        setDoc,
+        onSnapshot,
+        collection,
+        addDoc,
+        query,
+        orderBy,
+        getDocs,
+        writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
@@ -587,8 +669,14 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const GAME_DOC = doc(db, "siteConfig", "mysteryGameV2");
-    const RESULTS_DOC = doc(db, "siteConfig", "resultsV2");
+    const storage = getStorage(app);
+
+    const DATA_DOC = doc(db, "sahmMysteryGame", "mainData");
+    const RESULTS_COL = "sahmMysteryResults";
+    const BRANDING_LOGO_PATH = "branding/site-logo.png";
+    const BRANDING_SHARE_PATH = "branding/share-card.png";
+    const PUBLIC_BRANDING_LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media";
+    const PUBLIC_SHARE_IMAGE_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fshare-card.png?alt=media";
 
     const $ = (id) => document.getElementById(id);
     const esc = (v = "") => String(v)
@@ -603,6 +691,7 @@
         players: "اللاعبين",
         approvals: "تصاريح المستويات",
         questions: "التحديات والأسئلة",
+        progress: "تقدم اللاعبين",
         results: "النتائج",
         admins: "الرتب"
     };
@@ -614,134 +703,31 @@
         { id: "approvals", label: "🕯️ التصاريح", perm: "approvals" },
         { id: "challenges", label: "⚔️ التحديات", perm: "questions" },
         { id: "couples", label: "💞 الكبلز", perm: "questions" },
+        { id: "progress", label: "🧭 التقدم", perm: "progress" },
         { id: "results", label: "📥 النتائج", perm: "results" },
         { id: "admins", label: "🛡️ الرتب", perm: "admins" }
     ];
 
     function coupleQuestions(level) {
         const sets = {
-            1: [
-                "وش أول شيء جذبك في شريكك؟",
-                "اذكر موقف بسيط خلاك تبتسم بسببه.",
-                "وش أكثر صفة تحبها فيه؟",
-                "لو تهديه كلمة واحدة اليوم وش بتكون؟",
-                "وش الشيء اللي يخليك تحس بالأمان معه؟",
-                "وش أول ذكرى جميلة بينكم؟",
-                "وش أكثر عادة لطيفة عنده؟",
-                "متى حسيت إن العلاقة مختلفة عن غيرها؟",
-                "وش الشيء اللي تتمنى يعرفه عنك أكثر؟",
-                "اكتب رسالة قصيرة من قلبك له."
-            ],
-            2: [
-                "وش معنى الثقة بالنسبة لك في العلاقة؟",
-                "متى تحس إن شريكك فعلاً يسمعك؟",
-                "وش التصرف اللي يقوي ثقتك فيه؟",
-                "وش الشيء اللي تحتاجه وقت الزعل؟",
-                "كيف تحب شريكك يطمّنك؟",
-                "وش حدودك المهمة في العلاقة؟",
-                "اذكر موقف حسيت فيه بالاهتمام.",
-                "وش أكثر شيء يخليك ترتاح بالكلام معه؟",
-                "كيف تتعاملون مع سوء الفهم؟",
-                "وش وعد بسيط تقدر تقدمه له؟"
-            ],
-            3: [
-                "وش أجمل ذكرى تتمنى تعيدونها؟",
-                "اذكر مكان صار له معنى بسبب شريكك.",
-                "وش أغنية أو صوت يذكركم ببعض؟",
-                "وش موقف ضحكتوا عليه كثير؟",
-                "وش ذكرى بسيطة لكنها غالية عليك؟",
-                "متى حسيت إن اليوم صار أجمل بوجوده؟",
-                "وش صورة تتمنى تحتفظون فيها للأبد؟",
-                "وش أكثر رسالة قديمة تحبها؟",
-                "لو تكتب عنوان لفصل من ذكرياتكم وش يكون؟",
-                "وش ذكرى تتمنى تصنعونها قريب؟"
-            ],
-            4: [
-                "وش حلم تتمنى تحققه مع شريكك؟",
-                "كيف تتخيلون يوم مثالي بعد سنة؟",
-                "وش هدف صغير تقدرون تبدأونه مع بعض؟",
-                "وش الشيء اللي تتمنى تشوفه يكبر بينكم؟",
-                "لو عندكم رحلة أحلام، وين بتكون؟",
-                "وش مهارة تتمنى تتعلمونها مع بعض؟",
-                "كيف يدعمك شريكك في طموحك؟",
-                "وش حلم شخصي تبغاه يفهمه؟",
-                "وش الشيء اللي تخاف عليه في مستقبلكم؟",
-                "اكتب أمنية للمستقبل بينكم."
-            ],
-            5: [
-                "وش أفضل طريقة تناسبك للحوار وقت الخلاف؟",
-                "وش جملة تحب تسمعها وقت الضغط؟",
-                "كيف تعرف أن شريكك متضايق؟",
-                "وش الموضوع اللي تحتاجون تتكلمون عنه أكثر؟",
-                "وش الشيء اللي يزعلك لكن ما تقوله دائماً؟",
-                "كيف تفضل الاعتذار يكون؟",
-                "وش علامة الاهتمام عندك؟",
-                "متى تحتاج مساحة خاصة؟",
-                "وش أسلوب كلام يقربك أكثر؟",
-                "اكتب قاعدة تواصل تتمنى بينكم."
-            ],
-            6: [
-                "وش أصعب تحدي تجاوزتوه مع بعض؟",
-                "كيف تساند شريكك وقت التعب؟",
-                "وش الشيء اللي يخليكم ترجعون أقوى بعد الخلاف؟",
-                "ما التصرف الذي لا تريد تكراره؟",
-                "وش الدرس الذي تعلمته من العلاقة؟",
-                "كيف تتعامل مع الغيرة بطريقة صحية؟",
-                "وش أكبر سوء فهم صار بينكم؟",
-                "وش الشيء اللي يحتاج صبر من الطرفين؟",
-                "كيف تطلب الدعم بدون إحراج؟",
-                "اكتب رسالة مصالحة قصيرة."
-            ],
-            7: [
-                "وش أكثر شيء يضحكك من شريكك؟",
-                "لو تسوون تحدي ممتع اليوم وش يكون؟",
-                "وش لقب لطيف يناسبه؟",
-                "اذكر موقف عفوي جميل صار بينكم.",
-                "وش لعبة أو نشاط تحب تسويه معه؟",
-                "لو تطبخون وجبة مع بعض وش تختار؟",
-                "وش نكتة داخلية بينكم؟",
-                "وش حركة بسيطة منه تغيّر مزاجك؟",
-                "لو تهديه مفاجأة بسيطة وش بتكون؟",
-                "اكتب رسالة مرحة له."
-            ],
-            8: [
-                "كيف تتخيلون علاقتكم بعد خمس سنوات؟",
-                "وش قرار مهم تحتاجون تناقشونه بهدوء؟",
-                "وش معنى الاستقرار بالنسبة لك؟",
-                "كيف توزع المسؤوليات بينكم؟",
-                "وش عادة مستقبلية تتمنى تبنونها؟",
-                "كيف تحافظون على الحب مع الانشغال؟",
-                "وش قيمة أساسية ما تتنازل عنها؟",
-                "وش الخطة الأقرب التي تجمعكم؟",
-                "وش تخوف مستقبلي تحتاج تطمين عنه؟",
-                "اكتب اتفاق جميل للمستقبل."
-            ],
-            9: [
-                "وش شيء صريح تحب تقوله بلطف؟",
-                "وش أكثر شيء تحتاج تقديره؟",
-                "ما الشيء الذي تتمنى تغييره في طريقة التعامل؟",
-                "وش اعتراف إيجابي لشريكك؟",
-                "وش سؤال تخاف تسأله لكن مهم؟",
-                "ما الشيء الذي يسعدك ولا يعرفه؟",
-                "وش أكثر كلمة تؤثر فيك؟",
-                "متى حسيت أنك قصّرت؟",
-                "وش شيء تتمنى يسامحك عليه؟",
-                "اكتب جملة صادقة بدون مجاملة."
-            ],
-            10: [
-                "وش أجمل وعد تقدر تعطيه الآن؟",
-                "وش الشيء الذي يجعل العلاقة تستحق الجهد؟",
-                "ما تعريفك للحب بعد هذه الأسئلة؟",
-                "وش أكثر إجابة من شريكك أثرت فيك؟",
-                "وش التغيير الذي تريد تبدأه من اليوم؟",
-                "كيف تحبون تحتفلون بنهاية هذا المستوى؟",
-                "وش رسالة شكر تقولها له؟",
-                "وش عهد بسيط بينكم؟",
-                "ما الشيء الذي ستتذكره من هذه اللعبة؟",
-                "اكتب ختام من القلب لشريكك."
-            ]
+            1: ["وش أول شيء جذبك في شريكك؟","اذكر موقف بسيط خلاك تبتسم بسببه.","وش أكثر صفة تحبها فيه؟","لو تهديه كلمة واحدة اليوم وش بتكون؟","وش الشيء اللي يخليك تحس بالأمان معه؟","وش أول ذكرى جميلة بينكم؟","وش أكثر عادة لطيفة عنده؟","متى حسيت إن العلاقة مختلفة عن غيرها؟","وش الشيء اللي تتمنى يعرفه عنك أكثر؟","اكتب رسالة قصيرة من قلبك له."],
+            2: ["وش معنى الثقة بالنسبة لك في العلاقة؟","متى تحس إن شريكك فعلاً يسمعك؟","وش التصرف اللي يقوي ثقتك فيه؟","وش الشيء اللي تحتاجه وقت الزعل؟","كيف تحب شريكك يطمّنك؟","وش حدودك المهمة في العلاقة؟","اذكر موقف حسيت فيه بالاهتمام.","وش أكثر شيء يخليك ترتاح بالكلام معه؟","كيف تتعاملون مع سوء الفهم؟","وش وعد بسيط تقدر تقدمه له؟"],
+            3: ["وش أجمل ذكرى تتمنى تعيدونها؟","اذكر مكان صار له معنى بسبب شريكك.","وش أغنية أو صوت يذكركم ببعض؟","وش موقف ضحكتوا عليه كثير؟","وش ذكرى بسيطة لكنها غالية عليك؟","متى حسيت إن اليوم صار أجمل بوجوده؟","وش صورة تتمنى تحتفظون فيها للأبد؟","وش أكثر رسالة قديمة تحبها؟","لو تكتب عنوان لفصل من ذكرياتكم وش يكون؟","وش ذكرى تتمنى تصنعونها قريب؟"],
+            4: ["وش حلم تتمنى تحققه مع شريكك؟","كيف تتخيلون يوم مثالي بعد سنة؟","وش هدف صغير تقدرون تبدأونه مع بعض؟","وش الشيء اللي تتمنى تشوفه يكبر بينكم؟","لو عندكم رحلة أحلام، وين بتكون؟","وش مهارة تتمنى تتعلمونها مع بعض؟","كيف يدعمك شريكك في طموحك؟","وش حلم شخصي تبغاه يفهمه؟","وش الشيء اللي تخاف عليه في مستقبلكم؟","اكتب أمنية للمستقبل بينكم."],
+            5: ["وش أفضل طريقة تناسبك للحوار وقت الخلاف؟","وش جملة تحب تسمعها وقت الضغط؟","كيف تعرف أن شريكك متضايق؟","وش الموضوع اللي تحتاجون تتكلمون عنه أكثر؟","وش الشيء اللي يزعلك لكن ما تقوله دائماً؟","كيف تفضل الاعتذار يكون؟","وش علامة الاهتمام عندك؟","متى تحتاج مساحة خاصة؟","وش أسلوب كلام يقربك أكثر؟","اكتب قاعدة تواصل تتمنى بينكم."],
+            6: ["وش أصعب تحدي تجاوزتوه مع بعض؟","كيف تساند شريكك وقت التعب؟","وش الشيء اللي يخليكم ترجعون أقوى بعد الخلاف؟","ما التصرف الذي لا تريد تكراره؟","وش الدرس الذي تعلمته من العلاقة؟","كيف تتعامل مع الغيرة بطريقة صحية؟","وش أكبر سوء فهم صار بينكم؟","وش الشيء اللي يحتاج صبر من الطرفين؟","كيف تطلب الدعم بدون إحراج؟","اكتب رسالة مصالحة قصيرة."],
+            7: ["وش أكثر شيء يضحكك من شريكك؟","لو تسوون تحدي ممتع اليوم وش يكون؟","وش لقب لطيف يناسبه؟","اذكر موقف عفوي جميل صار بينكم.","وش لعبة أو نشاط تحب تسويه معه؟","لو تطبخون وجبة مع بعض وش تختار؟","وش نكتة داخلية بينكم؟","وش حركة بسيطة منه تغيّر مزاجك؟","لو تهديه مفاجأة بسيطة وش بتكون؟","اكتب رسالة مرحة له."],
+            8: ["كيف تتخيلون علاقتكم بعد خمس سنوات؟","وش قرار مهم تحتاجون تناقشونه بهدوء؟","وش معنى الاستقرار بالنسبة لك؟","كيف توزع المسؤوليات بينكم؟","وش عادة مستقبلية تتمنى تبنونها؟","كيف تحافظون على الحب مع الانشغال؟","وش قيمة أساسية ما تتنازل عنها؟","وش الخطة الأقرب التي تجمعكم؟","وش تخوف مستقبلي تحتاج تطمين عنه؟","اكتب اتفاق جميل للمستقبل."],
+            9: ["وش شيء صريح تحب تقوله بلطف؟","وش أكثر شيء تحتاج تقديره؟","ما الشيء الذي تتمنى تغييره في طريقة التعامل؟","وش اعتراف إيجابي لشريكك؟","وش سؤال تخاف تسأله لكن مهم؟","ما الشيء الذي يسعدك ولا يعرفه؟","وش أكثر كلمة تؤثر فيك؟","متى حسيت أنك قصّرت؟","وش شيء تتمنى يسامحك عليه؟","اكتب جملة صادقة بدون مجاملة."],
+            10: ["وش أجمل وعد تقدر تعطيه الآن؟","وش الشيء الذي يجعل العلاقة تستحق الجهد؟","ما تعريفك للحب بعد هذه الأسئلة؟","وش أكثر إجابة من شريكك أثرت فيك؟","وش التغيير الذي تريد تبدأه من اليوم؟","كيف تحبون تحتفلون بنهاية هذا المستوى؟","وش رسالة شكر تقولها له؟","وش عهد بسيط بينكم؟","ما الشيء الذي ستتذكره من هذه اللعبة؟","اكتب ختام من القلب لشريكك."]
         };
         return sets[level] || [];
+    }
+
+    function makeChallenge(q, type = "text", opts = ["نعم", "لا", "يمكن"]) {
+        const item = { q, type };
+        if(type === "options") item.opts = opts;
+        return item;
     }
 
     function defaultLevels() {
@@ -765,28 +751,22 @@
         });
     }
 
-    function makeChallenge(q, type = "text", opts = ["نعم", "لا", "يمكن"]) {
-        const item = { q, type };
-        if(type === "options") item.opts = opts;
-        return item;
-    }
-
     function defaultState() {
         return {
             config: {
-                logo: "https://via.placeholder.com/140",
+                logo: PUBLIC_BRANDING_LOGO_URL,
+                shareImage: PUBLIC_SHARE_IMAGE_URL,
                 bg: "",
                 title: "لعبة الغموض",
-                desc: "مرحباً بك في تحدي سهم المطور.. اختر المستوى وابدأ التجربة.",
-                rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "أسئلة الكبلز إجاباتها نصية فقط", "احترم الطرف الآخر في كل إجابة"],
+                desc: "مرحباً بك في تحدي سهم المطور.. كل باب يحتاج تصريح.",
+                rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "كل مستوى لا يفتح إلا بتصريح الإدارة", "احترم الطرف الآخر في كل إجابة"],
                 primaryColor: "#8B0000"
             },
-            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "results", "admins"]}],
+            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "admins"]}],
             players: [{u: "sahm", p: "1 2 3"}],
             levels: defaultLevels(),
             accessRequests: [],
-            progress: {},
-            results: []
+            progress: {}
         };
     }
 
@@ -799,21 +779,25 @@
             config: {...base.config, ...(old.config || {})},
             admins: Array.isArray(old.admins) && old.admins.length ? old.admins : base.admins,
             players: Array.isArray(old.players) && old.players.length ? old.players : base.players,
-            results: Array.isArray(old.results) ? old.results : base.results,
+            levels: Array.isArray(old.levels) && old.levels.length ? old.levels : base.levels,
             accessRequests: Array.isArray(old.accessRequests) ? old.accessRequests : base.accessRequests,
-            progress: old.progress && typeof old.progress === "object" ? old.progress : base.progress,
-            levels: Array.isArray(old.levels) && old.levels.length ? old.levels : base.levels
+            progress: old.progress && typeof old.progress === "object" ? old.progress : base.progress
         };
 
         merged.admins = merged.admins.map(a => {
             const perms = Array.isArray(a.perms) ? [...new Set(a.perms)] : [];
-            if(perms.includes("admins") && perms.includes("results") && !perms.includes("approvals")) perms.splice(Math.max(0, perms.indexOf("results")), 0, "approvals");
+            if(perms.includes("admins") && !perms.includes("approvals")) perms.push("approvals");
+            if(perms.includes("admins") && !perms.includes("progress")) perms.push("progress");
             return { ...a, perms };
         });
 
         if(!Array.isArray(old.levels) && Array.isArray(old.questions)) {
             merged.levels = defaultLevels();
-            merged.levels[0].challenges = old.questions.slice(0, 3).map(q => ({ q: q.q || "تحدي", type: q.type || "text", opts: q.opts || ["نعم", "لا"] }));
+            merged.levels[0].challenges = old.questions.slice(0, 3).map(q => ({
+                q: q.q || "تحدي",
+                type: q.type || "text",
+                opts: q.opts || ["نعم", "لا"]
+            }));
         }
 
         merged.levels = merged.levels.slice(0, 10);
@@ -834,64 +818,126 @@
     }
 
     let stored = null;
-    try { stored = JSON.parse(localStorage.getItem("sahm_mystery_v2") || localStorage.getItem("sahm_db") || "null"); } catch(e) {}
+    try { stored = JSON.parse(localStorage.getItem("sahm_mystery_cloud_v1") || localStorage.getItem("sahm_mystery_v2") || localStorage.getItem("sahm_db") || "null"); } catch(e) {}
     let state = migrateState(stored);
+    let results = [];
 
     let currentUser = null;
     let currentAdmin = null;
     let gameIdx = 0;
     let tempAnswers = [];
     let activeQueue = [];
-    let activeMode = "full";
+    let activeMode = "level-full";
     let activeLevelIndex = null;
     let mediaRecorder = null;
     let audioChunks = [];
     let activeStream = null;
     let saveTimer = null;
+    let cloudLoaded = false;
 
-    onSnapshot(GAME_DOC, (snap) => {
-        if(!snap.exists()) return;
-        const remote = snap.data();
-        state = migrateState({ ...state, ...remote, results: state.results });
-        saveLocalOnly();
-        applyVisuals();
-        if(currentAdmin) refreshAdminLists();
-    });
+    function setSaveState(text, show = true) {
+        const box = $("save-state");
+        if(!box) return;
+        box.textContent = text;
+        box.style.display = show ? "block" : "none";
+        if(show && text.includes("تم")) setTimeout(() => box.style.display = "none", 1300);
+    }
 
-    onSnapshot(RESULTS_DOC, (snap) => {
-        if(!snap.exists()) return;
-        const remoteResults = snap.data().allResults;
-        if(Array.isArray(remoteResults)) {
-            state.results = remoteResults;
-            saveLocalOnly();
-            if(currentAdmin) renderResults();
-        }
-    });
+    function cloudGameData() {
+        return {
+            config: state.config,
+            admins: state.admins,
+            players: state.players,
+            levels: state.levels,
+            accessRequests: state.accessRequests,
+            progress: state.progress,
+            updatedAt: new Date().toISOString()
+        };
+    }
 
     function saveLocalOnly() {
-        localStorage.setItem("sahm_mystery_v2", JSON.stringify(state));
+        localStorage.setItem("sahm_mystery_cloud_v1", JSON.stringify(state));
     }
 
     async function saveGameCloud() {
-        const { results, ...gameData } = state;
-        try { await setDoc(GAME_DOC, gameData, { merge: true }); } catch(e) { console.warn("Cloud save failed", e); }
+        setSaveState("جارٍ الحفظ السحابي...");
+        try {
+            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
+            setSaveState("تم الحفظ للجميع ✅");
+        } catch(e) {
+            console.warn("Cloud save failed", e);
+            setSaveState("تعذر الحفظ السحابي، تم الحفظ محلياً فقط");
+        }
     }
 
     function syncAndSave(pushCloud = true) {
         saveLocalOnly();
-        refreshAdminLists();
         applyVisuals();
+        refreshAdminLists();
         if(pushCloud) {
             clearTimeout(saveTimer);
-            saveTimer = setTimeout(saveGameCloud, 450);
+            saveTimer = setTimeout(saveGameCloud, 350);
         }
     }
     window.syncAndSave = syncAndSave;
 
+    onSnapshot(DATA_DOC, async (snap) => {
+        if(snap.exists()) {
+            state = migrateState(snap.data());
+            saveLocalOnly();
+            applyVisuals();
+            refreshAdminLists();
+            if(currentUser && $("screen-levels").classList.contains("active")) renderLevelMap();
+        } else if(!cloudLoaded) {
+            await setDoc(DATA_DOC, cloudGameData(), { merge: true });
+        }
+        cloudLoaded = true;
+    }, (err) => {
+        console.warn("Data listener error", err);
+        cloudLoaded = true;
+    });
+
+    onSnapshot(query(collection(db, RESULTS_COL), orderBy("isoTime", "desc")), (snap) => {
+        results = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        if(currentAdmin) {
+            renderDashboard();
+            renderResults();
+        }
+    }, (err) => console.warn("Results listener error", err));
+
+    function setMetaContent(selector, value) {
+        const el = document.querySelector(selector);
+        if(el) el.setAttribute("content", value);
+    }
+
+    function updateBrandMeta() {
+        const title = state.config.title || "لعبة الغموض - نظام سهم المطور";
+        const desc = state.config.desc || "ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.";
+        const logo = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
+        const shareImage = state.config.shareImage || PUBLIC_SHARE_IMAGE_URL;
+        setMetaContent('meta[name="description"]', desc);
+        setMetaContent('meta[name="theme-color"]', state.config.primaryColor || "#8B0000");
+        setMetaContent('meta[property="og:title"]', title);
+        setMetaContent('meta[property="og:description"]', desc);
+        setMetaContent('meta[property="og:image"]', shareImage);
+        setMetaContent('meta[property="og:image:secure_url"]', shareImage);
+        setMetaContent('meta[name="twitter:title"]', title);
+        setMetaContent('meta[name="twitter:description"]', desc);
+        setMetaContent('meta[name="twitter:image"]', shareImage);
+        const icon = document.querySelector('link[rel="icon"]');
+        if(icon) icon.setAttribute("href", logo);
+        const apple = document.querySelector('link[rel="apple-touch-icon"]');
+        if(apple) apple.setAttribute("href", logo);
+    }
+
     function applyVisuals() {
         document.documentElement.style.setProperty("--primary-red", state.config.primaryColor || "#8B0000");
-        $("display-logo").src = state.config.logo || "https://via.placeholder.com/140";
+        const logo = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
+        $("display-logo").src = logo;
         $("tab-title").innerText = state.config.title || "لعبة الغموض";
+        const preview = $("conf-logo-preview");
+        if(preview) preview.src = logo;
+        updateBrandMeta();
         if(state.config.bg) {
             document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.26), rgba(0,0,0,0.48)), url('${state.config.bg}')`;
         } else {
@@ -964,11 +1010,7 @@
         if(tabId === "approvals") renderAccessRequests("pending");
         if(tabId === "couples") renderCoupleEditor();
         if(tabId === "challenges") renderChallengeEditor();
-    };
-
-    window.showLevelMap = () => {
-        renderLevelMap();
-        showScreen("screen-levels");
+        if(tabId === "progress") renderProgressList();
     };
 
     function getPlayerProgress(user = currentUser) {
@@ -1004,7 +1046,7 @@
         return isPreviousLevelComplete(user, levelIndex) && hasLevelApproval(user, levelIndex);
     }
 
-    window.requestLevelAccess = async (levelIndex) => {
+    window.requestLevelAccess = (levelIndex) => {
         if(!currentUser) { alert("سجل دخولك أولاً"); return; }
         if(!isPreviousLevelComplete(currentUser, levelIndex)) {
             alert("الباب مغلق: يجب إنهاء المستوى السابق بالكامل قبل طلب تصريح جديد.");
@@ -1032,6 +1074,11 @@
         syncAndSave();
         renderLevelMap();
         alert("تم إرسال طلب التصريح للإدارة. انتظر الموافقة حتى يفتح الباب.");
+    };
+
+    window.showLevelMap = () => {
+        renderLevelMap();
+        showScreen("screen-levels");
     };
 
     function renderLevelMap() {
@@ -1088,21 +1135,14 @@
         return { q, type: "coupleText", levelIndex, kind: "كبلز", modeKind: "couple" };
     }
 
-    function buildQueue(mode, levelIndex = 0) {
-        if(mode === "level-full") return [
+    function buildQueue(levelIndex = 0) {
+        return [
             ...state.levels[levelIndex].challenges.map(ch => challengeToQueue(ch, levelIndex)),
             ...state.levels[levelIndex].coupleQuestions.map(q => coupleToQueue(q, levelIndex))
         ];
-        if(mode === "level-challenges") return state.levels[levelIndex].challenges.map(ch => challengeToQueue(ch, levelIndex));
-        if(mode === "level-couples") return state.levels[levelIndex].coupleQuestions.map(q => coupleToQueue(q, levelIndex));
-        if(mode === "challenges-all") return state.levels.flatMap((lvl, i) => lvl.challenges.map(ch => challengeToQueue(ch, i)));
-        return state.levels.flatMap((lvl, i) => [
-            ...lvl.challenges.map(ch => challengeToQueue(ch, i)),
-            ...lvl.coupleQuestions.map(q => coupleToQueue(q, i))
-        ]);
     }
 
-    window.initGameSession = (mode = "full", levelIndex = 0) => {
+    window.initGameSession = (mode = "level-full", levelIndex = 0) => {
         if(mode === "level-full" && !canStartLevel(currentUser, levelIndex)) {
             alert("الباب لم يفتح بعد. تحتاج إكمال السابق والحصول على تصريح من الإدارة.");
             showLevelMap();
@@ -1110,8 +1150,8 @@
         }
         activeMode = mode;
         activeLevelIndex = levelIndex;
-        activeQueue = buildQueue(mode, levelIndex);
-        if(!activeQueue.length) { alert("لا يوجد أسئلة أو تحديات في هذا المسار"); return; }
+        activeQueue = buildQueue(levelIndex);
+        if(!activeQueue.length) { alert("لا يوجد أسئلة أو تحديات في هذا المستوى"); return; }
         gameIdx = 0;
         tempAnswers = [];
         showScreen("screen-game");
@@ -1238,7 +1278,7 @@
         c.width = v.videoWidth || 640;
         c.height = v.videoHeight || 480;
         c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-        const data = c.toDataURL("image/webp", 0.8);
+        const data = c.toDataURL("image/webp", 0.82);
         stopActiveMedia();
         saveAndNext(data);
     };
@@ -1247,18 +1287,198 @@
         if(confirm("هل تريد الخروج من الجولة الحالية؟ لن يتم حفظ الإجابات غير المكتملة.")) showLevelMap();
     };
 
+    function dataUrlToBlob(dataUrl) {
+        const [meta, base64] = dataUrl.split(",");
+        const mime = (meta.match(/data:(.*?);base64/) || [])[1] || "application/octet-stream";
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for(let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: mime });
+    }
+
+    async function uploadDataUrlToStorage(dataUrl, folder, ext) {
+        const blob = dataUrlToBlob(dataUrl);
+        const safeUser = String(currentUser || "guest").replace(/[^\w\u0600-\u06FF-]+/g, "_");
+        const filePath = `${folder}/${safeUser}/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+        const fileRef = ref(storage, filePath);
+        await uploadBytes(fileRef, blob);
+        return await getDownloadURL(fileRef);
+    }
+
+    async function uploadBlobToStorage(blob, filePath) {
+        const fileRef = ref(storage, filePath);
+        await uploadBytes(fileRef, blob);
+        return await getDownloadURL(fileRef);
+    }
+
+    function loadImageFromBlob(blob) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("تعذر قراءة صورة الشعار")); };
+            img.src = url;
+        });
+    }
+
+    function canvasToBlob(canvas, type = "image/png", quality = 0.92) {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء صورة المشاركة")), type, quality);
+        });
+    }
+
+    async function buildShareCardBlob(logoBlob) {
+        const img = await loadImageFromBlob(logoBlob);
+        const canvas = document.createElement("canvas");
+        canvas.width = 1200;
+        canvas.height = 630;
+        const ctx = canvas.getContext("2d");
+        const color = state.config.primaryColor || "#8B0000";
+
+        const grd = ctx.createLinearGradient(0, 0, 1200, 630);
+        grd.addColorStop(0, "#080404");
+        grd.addColorStop(0.42, color);
+        grd.addColorStop(1, "#050505");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, 1200, 630);
+
+        ctx.globalAlpha = 0.16;
+        for(let i = 0; i < 9; i++) {
+            ctx.beginPath();
+            ctx.arc(110 + i * 140, 90 + (i % 3) * 180, 90, 0, Math.PI * 2);
+            ctx.strokeStyle = "#D4AF37";
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        roundRect(ctx, 420, 64, 360, 360, 52);
+        ctx.fill();
+        ctx.strokeStyle = "#D4AF37";
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        const size = 300;
+        const scale = Math.min(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, 600 - w / 2, 244 - h / 2, w, h);
+
+        ctx.direction = "rtl";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowColor = "rgba(0,0,0,0.45)";
+        ctx.shadowBlur = 18;
+        ctx.font = "bold 64px Tahoma, Arial";
+        wrapText(ctx, state.config.title || "لعبة الغموض", 600, 490, 980, 74);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#D4AF37";
+        ctx.font = "bold 30px Tahoma, Arial";
+        ctx.fillText("أبواب مغلقة • تصاريح إدارة • تحديات غامضة", 600, 575);
+
+        return await canvasToBlob(canvas, "image/png", 0.95);
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = String(text).split(" ");
+        let line = "";
+        let lines = [];
+        for(const word of words) {
+            const testLine = line ? `${line} ${word}` : word;
+            if(ctx.measureText(testLine).width > maxWidth && line) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = testLine;
+            }
+        }
+        if(line) lines.push(line);
+        lines = lines.slice(0, 2);
+        const startY = y - ((lines.length - 1) * lineHeight / 2);
+        lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+    }
+
+    window.uploadSiteLogo = async () => {
+        const input = $("conf-logo-file");
+        const status = $("logo-upload-status");
+        const file = input && input.files ? input.files[0] : null;
+        if(!file) { alert("اختر صورة الشعار أولاً"); return; }
+        if(!file.type.startsWith("image/")) { alert("الملف لازم يكون صورة"); return; }
+        try {
+            if(status) status.innerText = "جاري رفع الشعار وإنشاء بطاقة المشاركة...";
+            const logoUrl = await uploadBlobToStorage(file, BRANDING_LOGO_PATH);
+            const shareBlob = await buildShareCardBlob(file);
+            const shareUrl = await uploadBlobToStorage(shareBlob, BRANDING_SHARE_PATH);
+            state.config.logo = logoUrl;
+            state.config.shareImage = shareUrl;
+            $("conf-logo").value = logoUrl;
+            if($("conf-logo-preview")) $("conf-logo-preview").src = logoUrl;
+            saveLocalOnly();
+            applyVisuals();
+            refreshAdminLists();
+            await saveGameCloud();
+            if(status) status.innerText = "تم رفع الشعار واعتماده للجميع. عند مشاركة الرابط ستظهر بطاقة الموقع.";
+            alert("تم رفع الشعار وحفظه للجميع بنجاح");
+        } catch(e) {
+            console.error(e);
+            if(status) status.innerText = "فشل رفع الشعار. تأكد من تفعيل Firebase Storage Rules.";
+            alert("فشل رفع الشعار. تأكد من إعدادات Firebase Storage.");
+        }
+    };
+
+
+    async function prepareAnswersForCloud(list) {
+        const prepared = [];
+        for(const item of list) {
+            const copy = { ...item };
+            const answer = String(copy.answer || "");
+            try {
+                if(answer.startsWith("data:image")) {
+                    const url = await uploadDataUrlToStorage(answer, "mystery-game-images", "webp");
+                    copy.answer = { kind: "image", url };
+                } else if(answer.startsWith("data:audio")) {
+                    const url = await uploadDataUrlToStorage(answer, "mystery-game-audio", "webm");
+                    copy.answer = { kind: "audio", url };
+                }
+            } catch(e) {
+                console.warn("Storage upload failed. Falling back to inline data.", e);
+                copy.answer = answer;
+            }
+            prepared.push(copy);
+        }
+        return prepared;
+    }
+
     async function finishGame() {
         $("progress-fill").style.width = "100%";
+        setSaveState("جارٍ حفظ النتيجة والوسائط...");
+        const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
         const resultEntry = {
-            id: `R-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             user: currentUser,
             mode: activeMode,
+            level: activeLevelIndex + 1,
+            levelTitle: state.levels[activeLevelIndex]?.title || "",
             time: new Date().toLocaleString("ar-SA"),
             isoTime: new Date().toISOString(),
-            total: tempAnswers.length,
-            data: tempAnswers
+            total: preparedAnswers.length,
+            data: preparedAnswers
         };
-        state.results.unshift(resultEntry);
+
         if(activeMode === "level-full" && activeLevelIndex !== null) {
             const p = getPlayerProgress(currentUser);
             const levelNo = activeLevelIndex + 1;
@@ -1267,12 +1487,19 @@
             p.completedLevels.sort((a, b) => a - b);
             p.approvedLevels.sort((a, b) => a - b);
         }
+
         saveLocalOnly();
         await saveGameCloud();
+
         try {
-            await updateDoc(RESULTS_DOC, { allResults: arrayUnion(resultEntry) })
-                .catch(async () => { await setDoc(RESULTS_DOC, { allResults: [resultEntry] }); });
-        } catch(e) { console.warn("Firebase results error", e); }
+            await addDoc(collection(db, RESULTS_COL), resultEntry);
+            setSaveState("تم حفظ النتيجة سحابياً ✅");
+        } catch(e) {
+            console.error("Result save failed", e);
+            setSaveState("تعذر حفظ النتيجة في السحابة");
+            alert("صار خطأ أثناء حفظ النتيجة في Firebase. راجع إعدادات Firestore/Storage.");
+        }
+
         showScreen("screen-finish");
     }
 
@@ -1311,7 +1538,7 @@
         const rules = $("conf-rules").value.split("\n").map(x => x.trim()).filter(Boolean);
         if(rules.length) state.config.rules = rules;
         syncAndSave();
-        alert("تم حفظ المظهر والقوانين");
+        alert("تم حفظ المظهر والقوانين للجميع");
     };
 
     window.toggleAllPerms = (src) => { document.querySelectorAll(".p-sub").forEach(cb => cb.checked = src.checked); };
@@ -1336,7 +1563,7 @@
         if(!newU || !newP || !newPerms.length) { alert("اكتمل الاسم والباسورد والصلاحيات"); return; }
         state.admins[index] = { u: newU, p: newP, perms: newPerms };
         syncAndSave();
-        alert("تم تحديث بيانات المسؤول");
+        alert("تم تحديث بيانات المسؤول للجميع");
     };
 
     window.deleteAdmin = (index) => {
@@ -1358,13 +1585,23 @@
         const newU = $(`edit-p-u-${index}`).value.trim();
         const newP = $(`edit-p-p-${index}`).value;
         if(!newU || !newP) { alert("اكتب الاسم وكلمة المرور"); return; }
+        const oldU = state.players[index].u;
         state.players[index] = { u: newU, p: newP };
+        if(oldU !== newU && state.progress[oldU]) {
+            state.progress[newU] = state.progress[oldU];
+            delete state.progress[oldU];
+        }
         syncAndSave();
-        alert("تم تحديث اللاعب");
+        alert("تم تحديث اللاعب للجميع");
     };
 
     window.deletePlayer = (index) => {
-        if(confirm("حذف هذا اللاعب؟")) { state.players.splice(index, 1); syncAndSave(); }
+        const player = state.players[index];
+        if(confirm("حذف هذا اللاعب؟")) {
+            state.players.splice(index, 1);
+            if(player && state.progress[player.u]) delete state.progress[player.u];
+            syncAndSave();
+        }
     };
 
     function fillLevelSelects() {
@@ -1373,7 +1610,12 @@
         if($("result-filter-level")) $("result-filter-level").innerHTML = `<option value="">كل المستويات</option>` + state.levels.map((lvl, i) => `<option value="${i + 1}">المستوى ${i + 1}</option>`).join("");
     }
 
+    function typeLabel(type) {
+        return ({ text: "نصي", options: "اختيارات", camera: "كاميرا 📸", draw: "توقيع ✍️", audio: "تسجيل صوتي 🎤", coupleText: "كبلز نصي" })[type] || type;
+    }
+
     window.renderChallengeEditor = () => {
+        if(!$("challenge-level-select")) return;
         const idx = Number($("challenge-level-select").value || 0);
         const lvl = state.levels[idx];
         $("list-challenges").innerHTML = `
@@ -1381,7 +1623,7 @@
                 <h4>بيانات المستوى</h4>
                 <input id="lvl-title-${idx}" value="${esc(lvl.title)}" placeholder="عنوان المستوى">
                 <textarea id="lvl-desc-${idx}" placeholder="وصف المستوى">${esc(lvl.desc)}</textarea>
-                <button onclick="updateLevelMeta(${idx})" class="gold">حفظ بيانات المستوى</button>
+                <button onclick="updateLevelMeta(${idx})" class="gold">حفظ بيانات المستوى للجميع</button>
             </div>
             ${lvl.challenges.map((ch, i) => `
                 <div class="row-item">
@@ -1400,10 +1642,6 @@
         `;
         $("ch-new-text").placeholder = lvl.challenges.length >= 3 ? "وصلت للحد الأقصى 3 تحديات" : "نص التحدي";
     };
-
-    function typeLabel(type) {
-        return ({ text: "نصي", options: "اختيارات", camera: "كاميرا 📸", draw: "توقيع ✍️", audio: "تسجيل صوتي 🎤", coupleText: "كبلز نصي" })[type] || type;
-    }
 
     window.toggleChallengeOpts = (levelIdx, chIdx) => {
         const t = $(`edit-ch-type-${levelIdx}-${chIdx}`).value;
@@ -1431,7 +1669,7 @@
         if(type === "options" && !ch.opts.length) { alert("اكتب خيارات للتحدي"); return; }
         state.levels[levelIdx].challenges[chIdx] = ch;
         syncAndSave();
-        alert("تم حفظ التحدي");
+        alert("تم حفظ التحدي للجميع");
     };
 
     window.deleteChallenge = (levelIdx, chIdx) => {
@@ -1458,6 +1696,7 @@
     };
 
     window.renderCoupleEditor = () => {
+        if(!$("couple-level-select")) return;
         const idx = Number($("couple-level-select").value || 0);
         const qs = state.levels[idx].coupleQuestions || [];
         $("couple-questions-editor").value = qs.join("\n");
@@ -1475,7 +1714,7 @@
         state.levels[idx].coupleQuestions = qs;
         syncAndSave();
         renderCoupleEditor();
-        alert("تم حفظ أسئلة الكبلز");
+        alert("تم حفظ أسئلة الكبلز للجميع");
     };
 
     window.fillCoupleLevelToTen = () => {
@@ -1535,6 +1774,7 @@
     };
 
     function renderDashboard() {
+        if(!$("dashboard-stats")) return;
         const totalChallenges = state.levels.reduce((sum, l) => sum + l.challenges.length, 0);
         const totalCouples = state.levels.reduce((sum, l) => sum + l.coupleQuestions.length, 0);
         const pendingRequests = (state.accessRequests || []).filter(r => r.status === "pending").length;
@@ -1544,13 +1784,15 @@
             <div class="stat-card"><span class="pill">💞</span><h2>${totalCouples}</h2><b>أسئلة كبلز</b></div>
             <div class="stat-card"><span class="pill">👥</span><h2>${state.players.length}</h2><b>لاعبين</b></div>
             <div class="stat-card"><span class="pill">🕯️</span><h2>${pendingRequests}</h2><b>طلبات تصريح</b></div>
-            <div class="stat-card"><span class="pill">📥</span><h2>${state.results.length}</h2><b>نتائج</b></div>
+            <div class="stat-card"><span class="pill">📥</span><h2>${results.length}</h2><b>نتائج</b></div>
             <div class="stat-card"><span class="pill">🛡️</span><h2>${state.admins.length}</h2><b>مسؤولين</b></div>
         `;
     }
 
     function renderAppearanceFields() {
+        if(!$("conf-logo")) return;
         $("conf-logo").value = state.config.logo || "";
+        if($("conf-logo-preview")) $("conf-logo-preview").src = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
         $("conf-bg").value = state.config.bg || "";
         $("conf-title").value = state.config.title || "";
         $("conf-desc").value = state.config.desc || "";
@@ -1562,7 +1804,9 @@
         renderDashboard();
         renderAppearanceFields();
         fillLevelSelects();
+
         if($("list-access-requests")) renderAccessRequests("pending");
+        if($("list-progress")) renderProgressList();
 
         if($("list-players")) {
             $("list-players").innerHTML = state.players.map((p, i) => `
@@ -1589,7 +1833,7 @@
                         <input type="text" id="edit-adm-p-${i}" value="${esc(a.p)}" placeholder="كلمة السر">
                     </div>
                     <div class="perm-grid">
-                        ${["ui", "players", "approvals", "questions", "results", "admins"].map(perm => `
+                        ${["ui", "players", "approvals", "questions", "progress", "results", "admins"].map(perm => `
                             <label><input type="checkbox" class="edit-adm-perm-${i}" value="${perm}" ${(a.perms || []).includes(perm) ? "checked" : ""}> ${permLabels[perm]}</label>
                         `).join("")}
                     </div>
@@ -1606,25 +1850,52 @@
         if($("list-results")) renderResults();
     }
 
-    function modeLabel(mode) {
-        return ({
-            "level-full": "مستوى كامل",
-            full: "اللعبة الكاملة القديمة",
-            "challenges-all": "كل التحديات",
-            "level-challenges": "تحديات مستوى",
-            "level-couples": "كبلز مستوى"
-        })[mode] || mode;
-    }
+    window.renderProgressList = () => {
+        if(!$("list-progress")) return;
+        if(!state.players.length) {
+            $("list-progress").innerHTML = `<div class="admin-section"><h3>لا يوجد لاعبين</h3></div>`;
+            return;
+        }
+        $("list-progress").innerHTML = state.players.map(p => {
+            const prog = getPlayerProgress(p.u);
+            return `
+                <div class="result-box">
+                    <h3>🧭 ${esc(p.u)}</h3>
+                    <p class="hint">المكتملة: ${prog.completedLevels.length ? prog.completedLevels.join("، ") : "لا يوجد"} | المصرح بها: ${prog.approvedLevels.length ? prog.approvedLevels.join("، ") : "لا يوجد"}</p>
+                    <div class="row-controls">
+                        <button onclick="approveNextLevelForPlayer('${esc(p.u)}')" class="green small">فتح المستوى التالي</button>
+                        <button onclick="resetPlayerProgress('${esc(p.u)}')" class="danger small">تصفير التقدم</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    };
+
+    window.approveNextLevelForPlayer = (user) => {
+        const prog = getPlayerProgress(user);
+        const maxCompleted = prog.completedLevels.length ? Math.max(...prog.completedLevels) : 0;
+        const next = Math.min(maxCompleted + 1, 10);
+        if(!prog.approvedLevels.includes(next)) prog.approvedLevels.push(next);
+        prog.approvedLevels.sort((a, b) => a - b);
+        syncAndSave();
+        alert(`تم فتح المستوى ${next} للاعب ${user}`);
+    };
+
+    window.resetPlayerProgress = (user) => {
+        if(confirm(`تصفير تقدم ${user}؟`)) {
+            state.progress[user] = { completedLevels: [], approvedLevels: [] };
+            syncAndSave();
+        }
+    };
 
     window.renderResults = () => {
+        if(!$("list-results")) return;
         const player = ($("result-filter-player")?.value || "").trim().toLowerCase();
-        const mode = $("result-filter-mode")?.value || "";
         const level = $("result-filter-level")?.value || "";
 
-        let list = [...state.results];
+        let list = [...results];
         if(player) list = list.filter(r => String(r.user || "").toLowerCase().includes(player));
-        if(mode) list = list.filter(r => r.mode === mode);
-        if(level) list = list.filter(r => (r.data || []).some(d => String(d.level) === String(level)));
+        if(level) list = list.filter(r => String(r.level || "") === String(level) || (r.data || []).some(d => String(d.level) === String(level)));
 
         if(!list.length) {
             $("list-results").innerHTML = `<div class="admin-section"><h3>لا توجد نتائج مطابقة</h3><p class="hint">ستظهر نتائج اللاعبين هنا بعد إنهاء الجولات.</p></div>`;
@@ -1633,8 +1904,8 @@
 
         $("list-results").innerHTML = list.map((r, idx) => `
             <div class="result-box">
-                <h3>📌 ${esc(r.user || "لاعب")}</h3>
-                <p class="hint">${esc(r.time || "")} — ${modeLabel(r.mode)} — عدد الإجابات: ${r.total || (r.data || []).length}</p>
+                <h3>📌 ${esc(r.user || "لاعب")} — المستوى ${esc(r.level || "")}</h3>
+                <p class="hint">${esc(r.levelTitle || "")} — ${esc(r.time || "")} — عدد الإجابات: ${r.total || (r.data || []).length}</p>
                 <details ${idx === 0 ? "open" : ""}>
                     <summary style="cursor:pointer; font-weight:bold; color:var(--primary-red);">عرض التفاصيل</summary>
                     ${(r.data || []).map(d => `
@@ -1649,6 +1920,10 @@
     };
 
     function renderAnswer(answer = "") {
+        if(answer && typeof answer === "object") {
+            if(answer.kind === "image") return `<img src="${esc(answer.url)}" class="answer-media" alt="answer image">`;
+            if(answer.kind === "audio") return `<audio controls src="${esc(answer.url)}"></audio>`;
+        }
         const a = String(answer || "");
         if(a.startsWith("data:image")) return `<img src="${a}" class="answer-media" alt="answer image">`;
         if(a.startsWith("data:audio")) return `<audio controls src="${a}"></audio>`;
@@ -1656,7 +1931,7 @@
     }
 
     window.exportResults = () => {
-        const data = JSON.stringify(state.results, null, 2);
+        const data = JSON.stringify(results, null, 2);
         const blob = new Blob([data], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -1667,17 +1942,24 @@
     };
 
     window.clearResultsConfirm = async () => {
-        if(!confirm("مسح كل النتائج؟ لا يمكن التراجع.")) return;
-        state.results = [];
-        saveLocalOnly();
-        try { await setDoc(RESULTS_DOC, { allResults: [] }); } catch(e) { console.warn(e); }
-        renderResults();
-        renderDashboard();
+        if(!confirm("مسح كل النتائج من قاعدة البيانات؟ لا يمكن التراجع.")) return;
+        try {
+            const snap = await getDocs(collection(db, RESULTS_COL));
+            const batch = writeBatch(db);
+            snap.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            results = [];
+            renderResults();
+            renderDashboard();
+            alert("تم مسح النتائج");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر مسح النتائج. راجع صلاحيات Firestore.");
+        }
     };
 
     applyVisuals();
     refreshAdminLists();
-    saveGameCloud();
 </script>
 
 </body>
