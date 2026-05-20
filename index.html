@@ -525,7 +525,7 @@
     <div id="screen-admin-main" class="screen admin-panel">
         <div class="admin-top">
             <div>
-                <h2 style="margin-bottom:5px;">⚙️ لوحة سيف المطور السحابية</h2>
+                <h2 style="margin-bottom:5px;">⚙️ لوحة لعبة الغموض السحابية</h2>
                 <span class="hint" id="admin-welcome">إدارة اللعبة</span>
             </div>
             <button onclick="location.reload()" class="secondary small">تسجيل خروج</button>
@@ -727,6 +727,24 @@
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
+    function cleanBrandText(value = "") {
+        return String(value)
+            .replaceAll("لعبة الغموض - لعبة الغموض", "لعبة الغموض")
+            .replaceAll("لعبة الغموض - نظام سهم المطور", "لعبة الغموض")
+            .replaceAll("نظام سهم المطور", "لعبة الغموض")
+            .replaceAll("سهم المطور", "لعبة الغموض")
+            .replaceAll("تحدي لعبة الغموض", "تجربة لعبة الغموض")
+            .trim();
+    }
+
+    function sanitizeBrandingInState(target) {
+        if(!target || !target.config) return target;
+        target.config.title = cleanBrandText(target.config.title || "لعبة الغموض") || "لعبة الغموض";
+        target.config.desc = cleanBrandText(target.config.desc || "ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.");
+        if(Array.isArray(target.config.rules)) target.config.rules = target.config.rules.map(cleanBrandText);
+        return target;
+    }
+
     const permLabels = {
         ui: "المظهر",
         players: "اللاعبين",
@@ -799,7 +817,7 @@
                 shareImage: PUBLIC_SHARE_IMAGE_URL,
                 bg: "",
                 title: "لعبة الغموض",
-                desc: "مرحباً بك في تحدي سيف المطور.. كل باب يحتاج تصريح.",
+                desc: "مرحباً بك في تحدي لعبة الغموض.. كل باب يحتاج تصريح.",
                 rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "كل مستوى لا يفتح إلا بتصريح الإدارة", "احترم الطرف الآخر في كل إجابة"],
                 primaryColor: "#8B0000"
             },
@@ -855,7 +873,7 @@
                 coupleQuestions: coupleQs
             };
         });
-        return merged;
+        return sanitizeBrandingInState(merged);
     }
 
     let stored = null;
@@ -1077,7 +1095,7 @@
                 cloudLoaded = true;
                 return;
             }
-            state = migrateState(snap.data());
+            state = sanitizeBrandingInState(migrateState(snap.data()));
             lastSavedHash = compactHash(cloudGameData());
             saveLocalOnly();
             applyVisuals();
@@ -1111,8 +1129,8 @@
     }
 
     function updateBrandMeta() {
-        const title = state.config.title || "لعبة الغموض - نظام سيف المطور";
-        const desc = state.config.desc || "ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.";
+        const title = cleanBrandText(state.config.title || "لعبة الغموض") || "لعبة الغموض";
+        const desc = cleanBrandText(state.config.desc || "ادخل عالم الغموض: أبواب مغلقة، تصاريح إدارة، مستويات وتحديات.");
         const logo = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
         const shareImage = state.config.shareImage || PUBLIC_SHARE_IMAGE_URL;
         setMetaContent('meta[name="description"]', desc);
@@ -1134,7 +1152,7 @@
         document.documentElement.style.setProperty("--primary-red", state.config.primaryColor || "#8B0000");
         const logo = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
         $("display-logo").src = logo;
-        $("tab-title").innerText = state.config.title || "لعبة الغموض";
+        $("tab-title").innerText = cleanBrandText(state.config.title || "لعبة الغموض") || "لعبة الغموض";
         const preview = $("conf-logo-preview");
         if(preview) preview.src = logo;
         updateBrandMeta();
