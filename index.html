@@ -227,6 +227,44 @@
         .status-approved { background: rgba(16, 114, 63, 0.13); border-color: rgba(16,114,63,0.38); color: #075b31; }
         .status-rejected { background: rgba(181, 18, 34, 0.11); border-color: rgba(181,18,34,0.34); color: #7a0712; }
         .status-locked { background: rgba(30,30,30,0.10); border-color: rgba(30,30,30,0.25); color: #333; }
+        .status-review { background: rgba(212,175,55,0.16); border-color: rgba(212,175,55,0.48); color: #654500; }
+        .status-correct { background: rgba(16, 114, 63, 0.13); border-color: rgba(16,114,63,0.38); color: #075b31; }
+        .status-wrong { background: rgba(181, 18, 34, 0.11); border-color: rgba(181,18,34,0.34); color: #7a0712; }
+        .score-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .score-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.94), rgba(212,175,55,0.12));
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+        .score-card h3, .score-card h4 { margin: 0 0 6px; }
+        .review-panel {
+            background: rgba(255,255,255,0.96);
+            border: 1px solid rgba(212,175,55,0.45);
+            border-radius: 16px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        .review-grid {
+            display: grid;
+            grid-template-columns: minmax(90px, 130px) 1fr;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .review-grid input { margin: 0; }
+        .player-congrats {
+            border: 1px solid rgba(212,175,55,0.65);
+            background:
+                radial-gradient(circle at top left, rgba(212,175,55,0.28), transparent 35%),
+                linear-gradient(135deg, rgba(139,0,0,0.08), rgba(255,255,255,0.9));
+        }
 
         .progress-wrap {
             background: rgba(139,0,0,0.12);
@@ -457,6 +495,7 @@
             <span class="pill status-pending">⌛ بانتظار الإدارة</span>
             <span class="pill status-approved">✅ مصرح</span>
         </div>
+        <div id="player-review-banner"></div>
         <div id="levels-grid" class="level-grid"></div>
         <button class="secondary" onclick="showScreen('screen-start')">رجوع</button>
     </div>
@@ -480,8 +519,8 @@
 
     <div id="screen-finish" class="screen">
         <div class="hero-card">
-            <h1>✅ تم ختم المستوى</h1>
-            <p>تم حفظ النتيجة والتقدم في قاعدة البيانات السحابية. يمكنك الآن طلب تصريح المستوى التالي.</p>
+            <h1>🕯️ تم تسليم المستوى للإدارة</h1>
+            <p>تم حفظ إجاباتك سحابياً، والباب التالي يبقى مغلقاً حتى تصحح الإدارة كل سؤال وتعلن اجتياز المستوى.</p>
             <button onclick="showLevelMap()">العودة للمستويات</button>
             <button class="secondary" onclick="location.reload()">خروج</button>
         </div>
@@ -600,7 +639,8 @@
 
         <div id="tab-results" class="tab-pane">
             <div class="admin-section">
-                <h3>📥 النتائج الواردة</h3>
+                <h3>📥 النتائج والتصحيح</h3>
+                <p class="hint">كل إجابة تحتاج تصحيح من الإدارة. بعد تصحيح كل الأسئلة اضغط اعتماد الاجتياز أو عدم الاجتياز.</p>
                 <div class="grid grid-3">
                     <input type="text" id="result-filter-player" placeholder="فلترة باسم اللاعب" oninput="renderResults()">
                     <select id="result-filter-level" onchange="renderResults()"><option value="">كل المستويات</option></select>
@@ -608,6 +648,7 @@
                 </div>
                 <button onclick="clearResultsConfirm()" class="danger full">مسح كل النتائج من قاعدة البيانات</button>
             </div>
+            <div id="result-summary"></div>
             <div id="list-results"></div>
         </div>
 
@@ -643,6 +684,7 @@
         getFirestore,
         doc,
         setDoc,
+        updateDoc,
         onSnapshot,
         collection,
         addDoc,
@@ -902,6 +944,11 @@
         if(currentAdmin) {
             renderDashboard();
             renderResults();
+            renderProgressList();
+        }
+        if(currentUser) {
+            showLatestPlayerReviewNotice();
+            if($("screen-levels").classList.contains("active")) renderLevelMap();
         }
     }, (err) => console.warn("Results listener error", err));
 
@@ -1016,14 +1063,19 @@
     function getPlayerProgress(user = currentUser) {
         if(!state.progress || typeof state.progress !== "object") state.progress = {};
         if(!user) user = "guest";
-        if(!state.progress[user]) state.progress[user] = { completedLevels: [], approvedLevels: [] };
+        if(!state.progress[user]) state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [] };
         if(!Array.isArray(state.progress[user].completedLevels)) state.progress[user].completedLevels = [];
         if(!Array.isArray(state.progress[user].approvedLevels)) state.progress[user].approvedLevels = [];
+        if(!Array.isArray(state.progress[user].pendingReviewLevels)) state.progress[user].pendingReviewLevels = [];
         return state.progress[user];
     }
 
     function isLevelCompleted(user, levelIndex) {
         return getPlayerProgress(user).completedLevels.includes(levelIndex + 1);
+    }
+
+    function isLevelPendingReview(user, levelIndex) {
+        return getPlayerProgress(user).pendingReviewLevels.includes(levelIndex + 1);
     }
 
     function isPreviousLevelComplete(user, levelIndex) {
@@ -1043,7 +1095,7 @@
     }
 
     function canStartLevel(user, levelIndex) {
-        return isPreviousLevelComplete(user, levelIndex) && hasLevelApproval(user, levelIndex);
+        return isPreviousLevelComplete(user, levelIndex) && hasLevelApproval(user, levelIndex) && !isLevelPendingReview(user, levelIndex);
     }
 
     window.requestLevelAccess = (levelIndex) => {
@@ -1081,9 +1133,39 @@
         showScreen("screen-levels");
     };
 
+    function getLatestReviewedResultForPlayer(user = currentUser) {
+        if(!user) return null;
+        return results
+            .filter(r => r.user === user && (r.reviewStatus === "passed" || r.reviewStatus === "failed"))
+            .sort((a, b) => String(b.reviewedAt || b.isoTime || "").localeCompare(String(a.reviewedAt || a.isoTime || "")))[0] || null;
+    }
+
+    function renderPlayerReviewBanner() {
+        if(!$("player-review-banner")) return;
+        const r = getLatestReviewedResultForPlayer();
+        if(!r) {
+            $("player-review-banner").innerHTML = "";
+            return;
+        }
+        const s = getResultScore(r);
+        $("player-review-banner").innerHTML = `
+            <div class="hero-card player-congrats" style="text-align:right;">
+                <h3>${r.passed ? "🎉 تهانينا لقد تجاوزت المستوى بصورة كبيرة" : "🕯️ تم تصحيح المستوى"}</h3>
+                <p>${r.passed ? `تم اعتماد اجتيازك للمستوى ${esc(r.level)}: ${esc(r.levelTitle || "")}.` : `المستوى ${esc(r.level)} يحتاج إعادة محاولة بعد التصحيح.`}</p>
+                <div class="gate-line">
+                    <span class="pill ${r.passed ? "status-approved" : "status-rejected"}">${r.passed ? "✅ مجتاز" : "⛔ غير مجتاز"}</span>
+                    <span class="pill status-review">المجموع: ${s.earned} / ${s.max}</span>
+                    <span class="pill status-review">النسبة: ${s.percent}%</span>
+                </div>
+            </div>
+        `;
+    }
+
     function renderLevelMap() {
+        renderPlayerReviewBanner();
         $("levels-grid").innerHTML = state.levels.map((lvl, i) => {
             const completed = isLevelCompleted(currentUser, i);
+            const reviewPending = isLevelPendingReview(currentUser, i);
             const prevDone = isPreviousLevelComplete(currentUser, i);
             const approved = hasLevelApproval(currentUser, i);
             const latest = latestLevelRequest(currentUser, i);
@@ -1094,20 +1176,24 @@
             let lockedClass = "";
 
             if(completed) {
-                badge = `<span class="pill status-approved">✅ مكتمل</span>`;
+                badge = `<span class="pill status-approved">✅ تم الاجتياز</span>`;
                 action = `<button class="secondary small" onclick="initGameSession('level-full', ${i})">إعادة المستوى</button>`;
+            } else if(reviewPending) {
+                lockedClass = "locked";
+                badge = `<span class="pill status-review">🕯️ بانتظار تصحيح الإدارة</span>`;
+                action = `<button class="small" disabled>الإجابات تحت التصحيح</button>`;
             } else if(!prevDone) {
                 lockedClass = "locked";
                 badge = `<span class="pill status-locked">🔒 مقفل</span>`;
-                action = `<button class="small" disabled>أكمل المستوى السابق</button>`;
+                action = `<button class="small" disabled>أكمل واجتز المستوى السابق</button>`;
             } else if(pending) {
-                badge = `<span class="pill status-pending">⌛ بانتظار الإدارة</span>`;
+                badge = `<span class="pill status-pending">⌛ بانتظار تصريح الإدارة</span>`;
                 action = `<button class="small" disabled>طلب التصريح تحت المراجعة</button>`;
             } else if(approved) {
                 badge = `<span class="pill status-approved">🟢 مصرح بالدخول</span>`;
                 action = `<button class="gold small" onclick="initGameSession('level-full', ${i})">افتح الباب وابدأ</button>`;
             } else if(rejected) {
-                badge = `<span class="pill status-rejected">⛔ مرفوض</span>`;
+                badge = `<span class="pill status-rejected">⛔ التصريح مرفوض</span>`;
                 action = `<button class="danger small" onclick="requestLevelAccess(${i})">طلب تصريح جديد</button>`;
             } else {
                 badge = `<span class="pill status-locked">🕯️ يحتاج تصريح</span>`;
@@ -1468,6 +1554,18 @@
         $("progress-fill").style.width = "100%";
         setSaveState("جارٍ حفظ النتيجة والوسائط...");
         const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
+        const reviewedAnswers = preparedAnswers.map((answer, index) => ({
+            ...answer,
+            answerIndex: index,
+            maxPoints: 1,
+            review: {
+                status: "pending",
+                points: 0,
+                note: "",
+                reviewedBy: "",
+                reviewedAt: ""
+            }
+        }));
         const resultEntry = {
             user: currentUser,
             mode: activeMode,
@@ -1475,32 +1573,36 @@
             levelTitle: state.levels[activeLevelIndex]?.title || "",
             time: new Date().toLocaleString("ar-SA"),
             isoTime: new Date().toISOString(),
-            total: preparedAnswers.length,
-            data: preparedAnswers
+            total: reviewedAnswers.length,
+            reviewStatus: "pending",
+            passed: false,
+            score: 0,
+            maxScore: reviewedAnswers.reduce((sum, d) => sum + Number(d.maxPoints || 1), 0),
+            percent: 0,
+            reviewedCount: 0,
+            pendingCount: reviewedAnswers.length,
+            reviewedBy: "",
+            reviewedAt: "",
+            data: reviewedAnswers
         };
-
-        if(activeMode === "level-full" && activeLevelIndex !== null) {
-            const p = getPlayerProgress(currentUser);
-            const levelNo = activeLevelIndex + 1;
-            if(!p.completedLevels.includes(levelNo)) p.completedLevels.push(levelNo);
-            if(!p.approvedLevels.includes(levelNo)) p.approvedLevels.push(levelNo);
-            p.completedLevels.sort((a, b) => a - b);
-            p.approvedLevels.sort((a, b) => a - b);
-        }
-
-        saveLocalOnly();
-        await saveGameCloud();
 
         try {
             await addDoc(collection(db, RESULTS_COL), resultEntry);
-            setSaveState("تم حفظ النتيجة سحابياً ✅");
+            if(activeMode === "level-full" && activeLevelIndex !== null) {
+                const p = getPlayerProgress(currentUser);
+                const levelNo = activeLevelIndex + 1;
+                if(!p.pendingReviewLevels.includes(levelNo)) p.pendingReviewLevels.push(levelNo);
+                p.pendingReviewLevels.sort((a, b) => a - b);
+                saveLocalOnly();
+                await saveGameCloud();
+            }
+            setSaveState("تم تسليم النتيجة للتصحيح ✅");
+            showScreen("screen-finish");
         } catch(e) {
             console.error("Result save failed", e);
             setSaveState("تعذر حفظ النتيجة في السحابة");
             alert("صار خطأ أثناء حفظ النتيجة في Firebase. راجع إعدادات Firestore/Storage.");
         }
-
-        showScreen("screen-finish");
     }
 
     function initSignature() {
@@ -1773,17 +1875,141 @@
         renderAccessRequests(status === "approved" ? "approved" : status === "rejected" ? "rejected" : "pending");
     };
 
+    function normalizeResultData(r) {
+        return (Array.isArray(r.data) ? r.data : []).map((d, index) => ({
+            ...d,
+            answerIndex: typeof d.answerIndex === "number" ? d.answerIndex : index,
+            maxPoints: Number(d.maxPoints || 1),
+            review: {
+                status: d.review?.status || "pending",
+                points: Number(d.review?.points || 0),
+                note: d.review?.note || "",
+                reviewedBy: d.review?.reviewedBy || "",
+                reviewedAt: d.review?.reviewedAt || ""
+            }
+        }));
+    }
+
+    function getResultScore(r) {
+        const data = normalizeResultData(r);
+        const max = data.reduce((sum, d) => sum + Number(d.maxPoints || 1), 0);
+        const earned = data.reduce((sum, d) => sum + Number(d.review?.points || 0), 0);
+        const reviewed = data.filter(d => d.review?.status === "correct" || d.review?.status === "wrong").length;
+        const pending = Math.max(0, data.length - reviewed);
+        const percent = max ? Math.round((earned / max) * 100) : 0;
+        return { earned, max, reviewed, pending, total: data.length, percent };
+    }
+
+    function reviewStatusText(r) {
+        if(r.reviewStatus === "passed") return "✅ مجتاز";
+        if(r.reviewStatus === "failed") return "⛔ غير مجتاز";
+        const s = getResultScore(r);
+        if(s.pending > 0) return `🕯️ بانتظار التصحيح (${s.pending})`;
+        return "تم التصحيح - ينتظر الاعتماد";
+    }
+
+    function reviewStatusClass(r) {
+        if(r.reviewStatus === "passed") return "status-approved";
+        if(r.reviewStatus === "failed") return "status-rejected";
+        return "status-review";
+    }
+
+    function answerReviewBadge(d) {
+        const st = d.review?.status || "pending";
+        if(st === "correct") return `<span class="pill status-correct">✅ صحيح</span>`;
+        if(st === "wrong") return `<span class="pill status-wrong">❌ غير صحيح</span>`;
+        return `<span class="pill status-review">🕯️ ينتظر التصحيح</span>`;
+    }
+
+    function filteredResultsList() {
+        const player = ($("result-filter-player")?.value || "").trim().toLowerCase();
+        const level = $("result-filter-level")?.value || "";
+        let list = [...results];
+        if(player) list = list.filter(r => String(r.user || "").toLowerCase().includes(player));
+        if(level) list = list.filter(r => String(r.level || "") === String(level) || (r.data || []).some(d => String(d.level) === String(level)));
+        return list;
+    }
+
+    function renderResultsSummary(list) {
+        if(!$("result-summary")) return;
+        if(!list.length) {
+            $("result-summary").innerHTML = "";
+            return;
+        }
+        const total = list.reduce((acc, r) => {
+            const s = getResultScore(r);
+            acc.earned += s.earned;
+            acc.max += s.max;
+            acc.pending += s.pending;
+            acc.reviewed += s.reviewed;
+            acc.passed += r.reviewStatus === "passed" ? 1 : 0;
+            acc.failed += r.reviewStatus === "failed" ? 1 : 0;
+            return acc;
+        }, { earned: 0, max: 0, pending: 0, reviewed: 0, passed: 0, failed: 0 });
+        const percent = total.max ? Math.round((total.earned / total.max) * 100) : 0;
+
+        const byLevel = {};
+        const byPlayer = {};
+        list.forEach(r => {
+            const s = getResultScore(r);
+            const levelKey = String(r.level || "غير محدد");
+            if(!byLevel[levelKey]) byLevel[levelKey] = { title: r.levelTitle || "", earned: 0, max: 0, submissions: 0, passed: 0, pending: 0 };
+            byLevel[levelKey].earned += s.earned;
+            byLevel[levelKey].max += s.max;
+            byLevel[levelKey].submissions++;
+            byLevel[levelKey].passed += r.reviewStatus === "passed" ? 1 : 0;
+            byLevel[levelKey].pending += s.pending;
+
+            const playerKey = r.user || "لاعب";
+            if(!byPlayer[playerKey]) byPlayer[playerKey] = { earned: 0, max: 0, submissions: 0, passed: 0, pending: 0 };
+            byPlayer[playerKey].earned += s.earned;
+            byPlayer[playerKey].max += s.max;
+            byPlayer[playerKey].submissions++;
+            byPlayer[playerKey].passed += r.reviewStatus === "passed" ? 1 : 0;
+            byPlayer[playerKey].pending += s.pending;
+        });
+
+        const levelCards = Object.entries(byLevel).sort((a,b) => Number(a[0]) - Number(b[0])).map(([level, v]) => {
+            const pct = v.max ? Math.round((v.earned / v.max) * 100) : 0;
+            return `<div class="score-card"><h4>المستوى ${esc(level)}</h4><p class="hint">${esc(v.title)}</p><b>${v.earned} / ${v.max}</b><p class="hint">النسبة ${pct}% — مجتازة: ${v.passed} — بانتظار: ${v.pending}</p></div>`;
+        }).join("");
+
+        const playerCards = Object.entries(byPlayer).sort((a,b) => a[0].localeCompare(b[0], "ar")).map(([player, v]) => {
+            const pct = v.max ? Math.round((v.earned / v.max) * 100) : 0;
+            return `<div class="score-card"><h4>${esc(player)}</h4><b>${v.earned} / ${v.max}</b><p class="hint">النسبة ${pct}% — نتائج: ${v.submissions} — اجتياز: ${v.passed} — بانتظار: ${v.pending}</p></div>`;
+        }).join("");
+
+        $("result-summary").innerHTML = `
+            <div class="admin-section">
+                <h3>📊 المجموع العام لكل النتائج الظاهرة</h3>
+                <div class="score-board">
+                    <div class="score-card"><h3>${total.earned} / ${total.max}</h3><b>المجموع الجامع</b><p class="hint">النسبة ${percent}%</p></div>
+                    <div class="score-card"><h3>${total.reviewed}</h3><b>إجابات مصححة</b><p class="hint">المتبقي: ${total.pending}</p></div>
+                    <div class="score-card"><h3>${total.passed}</h3><b>مستويات مجتازة</b><p class="hint">غير مجتاز: ${total.failed}</p></div>
+                </div>
+                <h3>🧩 المجموع كـ انفراد لكل مستوى</h3>
+                <div class="score-board">${levelCards}</div>
+                <h3>👤 المجموع الجامع لكل لاعب</h3>
+                <div class="score-board">${playerCards}</div>
+            </div>
+        `;
+    }
+
     function renderDashboard() {
         if(!$("dashboard-stats")) return;
         const totalChallenges = state.levels.reduce((sum, l) => sum + l.challenges.length, 0);
         const totalCouples = state.levels.reduce((sum, l) => sum + l.coupleQuestions.length, 0);
         const pendingRequests = (state.accessRequests || []).filter(r => r.status === "pending").length;
+        const pendingReviews = results.reduce((sum, r) => sum + getResultScore(r).pending, 0);
+        const passedLevels = results.filter(r => r.reviewStatus === "passed").length;
         $("dashboard-stats").innerHTML = `
             <div class="stat-card"><span class="pill">🗺️</span><h2>${state.levels.length}</h2><b>مستويات</b></div>
             <div class="stat-card"><span class="pill">⚔️</span><h2>${totalChallenges}</h2><b>تحديات</b></div>
             <div class="stat-card"><span class="pill">💞</span><h2>${totalCouples}</h2><b>أسئلة كبلز</b></div>
             <div class="stat-card"><span class="pill">👥</span><h2>${state.players.length}</h2><b>لاعبين</b></div>
             <div class="stat-card"><span class="pill">🕯️</span><h2>${pendingRequests}</h2><b>طلبات تصريح</b></div>
+            <div class="stat-card"><span class="pill">📝</span><h2>${pendingReviews}</h2><b>إجابات تنتظر التصحيح</b></div>
+            <div class="stat-card"><span class="pill">🏆</span><h2>${passedLevels}</h2><b>مستويات مجتازة</b></div>
             <div class="stat-card"><span class="pill">📥</span><h2>${results.length}</h2><b>نتائج</b></div>
             <div class="stat-card"><span class="pill">🛡️</span><h2>${state.admins.length}</h2><b>مسؤولين</b></div>
         `;
@@ -1858,10 +2084,26 @@
         }
         $("list-progress").innerHTML = state.players.map(p => {
             const prog = getPlayerProgress(p.u);
+            const playerResults = results.filter(r => r.user === p.u);
+            const score = playerResults.reduce((acc, r) => {
+                const s = getResultScore(r);
+                acc.earned += s.earned;
+                acc.max += s.max;
+                acc.pending += s.pending;
+                acc.passed += r.reviewStatus === "passed" ? 1 : 0;
+                return acc;
+            }, { earned: 0, max: 0, pending: 0, passed: 0 });
+            const pct = score.max ? Math.round((score.earned / score.max) * 100) : 0;
             return `
                 <div class="result-box">
                     <h3>🧭 ${esc(p.u)}</h3>
-                    <p class="hint">المكتملة: ${prog.completedLevels.length ? prog.completedLevels.join("، ") : "لا يوجد"} | المصرح بها: ${prog.approvedLevels.length ? prog.approvedLevels.join("، ") : "لا يوجد"}</p>
+                    <p class="hint">المكتملة: ${prog.completedLevels.length ? prog.completedLevels.join("، ") : "لا يوجد"} | المصرح بها: ${prog.approvedLevels.length ? prog.approvedLevels.join("، ") : "لا يوجد"} | تحت التصحيح: ${prog.pendingReviewLevels.length ? prog.pendingReviewLevels.join("، ") : "لا يوجد"}</p>
+                    <div class="gate-line">
+                        <span class="pill status-review">المجموع: ${score.earned} / ${score.max}</span>
+                        <span class="pill status-review">النسبة: ${pct}%</span>
+                        <span class="pill status-approved">مستويات مجتازة: ${score.passed}</span>
+                        <span class="pill status-pending">بانتظار التصحيح: ${score.pending}</span>
+                    </div>
                     <div class="row-controls">
                         <button onclick="approveNextLevelForPlayer('${esc(p.u)}')" class="green small">فتح المستوى التالي</button>
                         <button onclick="resetPlayerProgress('${esc(p.u)}')" class="danger small">تصفير التقدم</button>
@@ -1883,41 +2125,189 @@
 
     window.resetPlayerProgress = (user) => {
         if(confirm(`تصفير تقدم ${user}؟`)) {
-            state.progress[user] = { completedLevels: [], approvedLevels: [] };
+            state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [] };
             syncAndSave();
         }
     };
 
     window.renderResults = () => {
         if(!$("list-results")) return;
-        const player = ($("result-filter-player")?.value || "").trim().toLowerCase();
-        const level = $("result-filter-level")?.value || "";
-
-        let list = [...results];
-        if(player) list = list.filter(r => String(r.user || "").toLowerCase().includes(player));
-        if(level) list = list.filter(r => String(r.level || "") === String(level) || (r.data || []).some(d => String(d.level) === String(level)));
+        const list = filteredResultsList();
+        renderResultsSummary(list);
 
         if(!list.length) {
             $("list-results").innerHTML = `<div class="admin-section"><h3>لا توجد نتائج مطابقة</h3><p class="hint">ستظهر نتائج اللاعبين هنا بعد إنهاء الجولات.</p></div>`;
             return;
         }
 
-        $("list-results").innerHTML = list.map((r, idx) => `
-            <div class="result-box">
-                <h3>📌 ${esc(r.user || "لاعب")} — المستوى ${esc(r.level || "")}</h3>
-                <p class="hint">${esc(r.levelTitle || "")} — ${esc(r.time || "")} — عدد الإجابات: ${r.total || (r.data || []).length}</p>
-                <details ${idx === 0 ? "open" : ""}>
-                    <summary style="cursor:pointer; font-weight:bold; color:var(--primary-red);">عرض التفاصيل</summary>
-                    ${(r.data || []).map(d => `
-                        <div style="border-top:1px solid var(--line); padding:10px 0;">
-                            <b>المستوى ${esc(d.level)} - ${esc(d.kind)}:</b> ${esc(d.question)}
-                            <div style="margin-top:8px;">${renderAnswer(d.answer)}</div>
+        $("list-results").innerHTML = list.map((r, idx) => {
+            const data = normalizeResultData(r);
+            const s = getResultScore(r);
+            return `
+                <div class="result-box">
+                    <h3>📌 ${esc(r.user || "لاعب")} — المستوى ${esc(r.level || "")}</h3>
+                    <p class="hint">${esc(r.levelTitle || "")} — ${esc(r.time || "")} — عدد الإجابات: ${r.total || data.length}</p>
+                    <div class="gate-line">
+                        <span class="pill ${reviewStatusClass(r)}">${reviewStatusText(r)}</span>
+                        <span class="pill status-review">المجموع: ${s.earned} / ${s.max}</span>
+                        <span class="pill status-review">النسبة: ${s.percent}%</span>
+                        <span class="pill status-pending">المتبقي للتصحيح: ${s.pending}</span>
+                    </div>
+                    <details ${idx === 0 ? "open" : ""}>
+                        <summary style="cursor:pointer; font-weight:bold; color:var(--primary-red);">عرض الإجابات وتصحيحها</summary>
+                        ${data.map((d, answerIndex) => `
+                            <div class="review-panel">
+                                <div class="gate-line">
+                                    <span class="admin-badge">${esc(d.kind || "إجابة")} #${answerIndex + 1}</span>
+                                    ${answerReviewBadge(d)}
+                                    <span class="pill status-review">النقاط: ${Number(d.review?.points || 0)} / ${Number(d.maxPoints || 1)}</span>
+                                </div>
+                                <b>المستوى ${esc(d.level)} - ${esc(d.kind)}:</b> ${esc(d.question)}
+                                <div style="margin-top:8px;">${renderAnswer(d.answer)}</div>
+                                ${d.review?.note ? `<p class="hint"><b>ملاحظة الإدارة:</b> ${esc(d.review.note)}</p>` : ""}
+                                <div class="review-grid">
+                                    <input type="number" min="0" step="0.5" id="points-${r.docId}-${answerIndex}" value="${Number(d.review?.points || 0)}" placeholder="النقاط">
+                                    <input type="text" id="note-${r.docId}-${answerIndex}" value="${esc(d.review?.note || "")}" placeholder="ملاحظة الإدارة على هذه الإجابة">
+                                </div>
+                                <div class="row-controls">
+                                    <button onclick="setAnswerReview('${r.docId}', ${answerIndex}, 'correct')" class="green small">تصحيح: صحيح</button>
+                                    <button onclick="setAnswerReview('${r.docId}', ${answerIndex}, 'wrong')" class="danger small">تصحيح: غير صحيح</button>
+                                    <button onclick="setAnswerReview('${r.docId}', ${answerIndex}, 'pending')" class="secondary small">إرجاع للتصحيح</button>
+                                </div>
+                            </div>
+                        `).join("")}
+                        <div class="review-panel">
+                            <h3>اعتماد نتيجة المستوى</h3>
+                            <p class="hint">بعد تصحيح كل سؤال/تحدي، اعتمد النتيجة. إذا اخترت اجتاز، سيظهر للاعب: تهانينا لقد تجاوزت المستوى بصورة كبيرة، وسيفتح له طلب المستوى التالي.</p>
+                            <div class="row-controls">
+                                <button onclick="finalizeResultReview('${r.docId}', true)" class="gold">اعتماد الاجتياز وفتح التالي</button>
+                                <button onclick="finalizeResultReview('${r.docId}', false)" class="danger">عدم الاجتياز</button>
+                            </div>
                         </div>
-                    `).join("")}
-                </details>
-            </div>
-        `).join("");
+                    </details>
+                </div>
+            `;
+        }).join("");
     };
+
+    async function updateResultReviewDoc(result, extra = {}) {
+        const data = normalizeResultData(result);
+        const temp = { ...result, data };
+        const score = getResultScore(temp);
+        const payload = {
+            data,
+            score: score.earned,
+            maxScore: score.max,
+            percent: score.percent,
+            reviewedCount: score.reviewed,
+            pendingCount: score.pending,
+            total: score.total,
+            ...extra
+        };
+        await updateDoc(doc(db, RESULTS_COL, result.docId), payload);
+    }
+
+    window.setAnswerReview = async (docId, answerIndex, status) => {
+        const result = results.find(r => r.docId === docId);
+        if(!result) return alert("لم يتم العثور على النتيجة");
+        const data = normalizeResultData(result);
+        if(!data[answerIndex]) return alert("لم يتم العثور على الإجابة");
+        const maxPoints = Number(data[answerIndex].maxPoints || 1);
+        const pointsEl = $(`points-${docId}-${answerIndex}`);
+        const noteEl = $(`note-${docId}-${answerIndex}`);
+        let points = Number(pointsEl?.value || 0);
+        if(status === "correct" && (!pointsEl || points === 0)) points = maxPoints;
+        if(status === "wrong") points = 0;
+        if(status === "pending") points = 0;
+        points = Math.max(0, Math.min(points, maxPoints));
+        data[answerIndex] = {
+            ...data[answerIndex],
+            review: {
+                status,
+                points,
+                note: noteEl?.value || "",
+                reviewedBy: currentAdmin ? currentAdmin.u : "admin",
+                reviewedAt: new Date().toLocaleString("ar-SA")
+            }
+        };
+        const updated = { ...result, data };
+        const score = getResultScore(updated);
+        const reviewStatus = score.pending > 0 ? "pending" : (result.reviewStatus === "passed" || result.reviewStatus === "failed" ? result.reviewStatus : "corrected");
+        try {
+            await updateResultReviewDoc(updated, {
+                reviewStatus,
+                passed: result.passed === true && reviewStatus === "passed",
+                reviewedBy: currentAdmin ? currentAdmin.u : "admin",
+                reviewedAt: new Date().toISOString()
+            });
+            setSaveState("تم حفظ التصحيح ✅");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر حفظ التصحيح في قاعدة البيانات");
+        }
+    };
+
+    window.finalizeResultReview = async (docId, passed) => {
+        const result = results.find(r => r.docId === docId);
+        if(!result) return alert("لم يتم العثور على النتيجة");
+        const data = normalizeResultData(result);
+        const temp = { ...result, data };
+        const score = getResultScore(temp);
+        if(score.pending > 0 && !confirm(`باقي ${score.pending} إجابات بدون تصحيح. هل تريد الاعتماد رغم ذلك؟`)) return;
+
+        const levelNo = Number(result.level || 0);
+        const user = result.user;
+        if(user && levelNo) {
+            const prog = getPlayerProgress(user);
+            prog.pendingReviewLevels = prog.pendingReviewLevels.filter(x => Number(x) !== levelNo);
+            if(passed) {
+                if(!prog.completedLevels.includes(levelNo)) prog.completedLevels.push(levelNo);
+                if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+                prog.completedLevels.sort((a, b) => a - b);
+                prog.approvedLevels.sort((a, b) => a - b);
+            }
+        }
+
+        saveLocalOnly();
+        await saveGameCloud();
+
+        try {
+            await updateResultReviewDoc(temp, {
+                reviewStatus: passed ? "passed" : "failed",
+                passed,
+                reviewedBy: currentAdmin ? currentAdmin.u : "admin",
+                reviewedAt: new Date().toISOString()
+            });
+            setSaveState(passed ? "تم اعتماد اجتياز المستوى ✅" : "تم اعتماد عدم الاجتياز");
+            alert(passed ? "تم اعتماد اجتياز اللاعب وفتح الطريق للمستوى التالي." : "تم حفظ النتيجة كغير مجتاز، ويمكن للاعب إعادة المحاولة إذا كان لديه تصريح.");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر اعتماد النتيجة في قاعدة البيانات");
+        }
+    };
+
+    function showLatestPlayerReviewNotice() {
+        if(!currentUser || !Array.isArray(results) || !results.length) return;
+        const reviewed = results
+            .filter(r => r.user === currentUser && (r.reviewStatus === "passed" || r.reviewStatus === "failed"))
+            .sort((a, b) => String(b.reviewedAt || b.isoTime || "").localeCompare(String(a.reviewedAt || a.isoTime || "")));
+        if(!reviewed.length) return;
+        const key = `sahm_seen_reviews_${currentUser}`;
+        let seen = [];
+        try { seen = JSON.parse(localStorage.getItem(key) || "[]"); } catch(e) { seen = []; }
+        const fresh = reviewed.find(r => r.docId && !seen.includes(r.docId));
+        if(!fresh) return;
+        seen.push(fresh.docId);
+        localStorage.setItem(key, JSON.stringify(seen.slice(-80)));
+        const s = getResultScore(fresh);
+        setTimeout(() => {
+            if(fresh.passed) {
+                alert(`تهانينا لقد تجاوزت المستوى بصورة كبيرة 🎉\nالمستوى ${fresh.level}: ${fresh.levelTitle || ""}\nمجموعك: ${s.earned} / ${s.max} — النسبة ${s.percent}%`);
+            } else {
+                alert(`تم تصحيح المستوى ${fresh.level}.\nالنتيجة: غير مجتاز حالياً.\nمجموعك: ${s.earned} / ${s.max} — النسبة ${s.percent}%`);
+            }
+        }, 250);
+    }
 
     function renderAnswer(answer = "") {
         if(answer && typeof answer === "object") {
