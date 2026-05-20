@@ -57,13 +57,8 @@
         }
 
         body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            background:
-                linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.03) 75%, transparent 75%, transparent);
-            background-size: 34px 34px;
-            pointer-events: none;
+            content: none;
+            display: none;
         }
 
         .container {
@@ -512,7 +507,8 @@
             <div id="q-interface"></div>
             <div id="q-controls" style="margin-top: 16px;">
                 <button id="btn-next-q" onclick="processAnswer()">السؤال التالي</button>
-                <button class="secondary" onclick="confirmExitSession()">خروج من الجولة</button>
+                <button id="btn-save-progress" class="gold" onclick="saveCurrentQuestionProgress()">💾 حفظ التقدم الآن</button>
+                <button class="secondary" onclick="confirmExitSession()">خروج وحفظ مكاني</button>
             </div>
         </div>
     </div>
@@ -691,6 +687,8 @@
         query,
         orderBy,
         getDocs,
+        getDoc,
+        deleteDoc,
         writeBatch
     } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import {
@@ -715,6 +713,7 @@
 
     const DATA_DOC = doc(db, "sahmMysteryGame", "mainData");
     const RESULTS_COL = "sahmMysteryResults";
+    const DRAFTS_COL = "sahmMysteryDrafts";
     const BRANDING_LOGO_PATH = "branding/site-logo.png";
     const BRANDING_SHARE_PATH = "branding/share-card.png";
     const PUBLIC_BRANDING_LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media";
@@ -868,6 +867,7 @@
     let currentAdmin = null;
     let gameIdx = 0;
     let tempAnswers = [];
+    let currentPartialDraft = null;
     let activeQueue = [];
     let activeMode = "level-full";
     let activeLevelIndex = null;
@@ -966,6 +966,99 @@
             console.warn("Progress save failed, fallback to full save", e);
             return await saveGameCloud(options);
         }
+    }
+
+    function safeDocPart(value) {
+        return String(value || "guest").replace(/[^a-zA-Z0-9_؀-ۿ-]+/g, "_").slice(0, 80) || "guest";
+    }
+
+    function draftId(user = currentUser, levelIndex = activeLevelIndex) {
+        const lvl = Number(levelIndex || 0) + 1;
+        return `${safeDocPart(user)}__level_${lvl}`;
+    }
+
+    function localDraftKey(user = currentUser, levelIndex = activeLevelIndex) {
+        return `sahm_draft_${draftId(user, levelIndex)}`;
+    }
+
+    function compactAnswerForDraft(item) {
+        const copy = { ...item };
+        const answer = copy.answer;
+        if(typeof answer === "string" && answer.startsWith("data:image")) {
+            copy.answer = { kind: "draft-image", text: "تم حفظ مكان إجابة صورة/توقيع. إذا خرجت قبل التسليم قد تحتاج إعادة رفعها." };
+        } else if(typeof answer === "string" && answer.startsWith("data:audio")) {
+            copy.answer = { kind: "draft-audio", text: "تم حفظ مكان إجابة صوتية. إذا خرجت قبل التسليم قد تحتاج إعادة تسجيلها." };
+        }
+        return copy;
+    }
+
+    function getCurrentInputAnswer(allowEmpty = true) {
+        const q = activeQueue[gameIdx];
+        if(!q) return null;
+        let val = "";
+        if(q.type === "text" || q.type === "coupleText") val = $("ans-field")?.value?.trim() || "";
+        else if(q.type === "draw" && $("sig-pad")) val = $("sig-pad").toDataURL("image/webp", 0.68);
+        else return null;
+        if(!allowEmpty && !val) return null;
+        return {
+            level: q.levelIndex + 1,
+            levelTitle: state.levels[q.levelIndex].title,
+            kind: q.kind,
+            type: q.type,
+            question: q.q,
+            answer: val
+        };
+    }
+
+    function buildDraftPayload(partialAnswer = null) {
+        return {
+            user: currentUser,
+            mode: activeMode,
+            level: activeLevelIndex + 1,
+            levelTitle: state.levels[activeLevelIndex]?.title || "",
+            currentIndex: gameIdx,
+            totalQuestions: activeQueue.length,
+            tempAnswers: tempAnswers.map(compactAnswerForDraft),
+            partialAnswer: partialAnswer ? compactAnswerForDraft(partialAnswer) : null,
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    async function saveDraftToCloud(options = {}) {
+        if(!currentUser || activeLevelIndex === null || !activeQueue.length) return true;
+        const partial = options.partial === true ? getCurrentInputAnswer(true) : null;
+        const draft = buildDraftPayload(partial);
+        localStorage.setItem(localDraftKey(), JSON.stringify(draft));
+        if(!options.silent) setSaveState("تم حفظ مكانك محلياً — جارٍ رفعه للسحابة...");
+        try {
+            await setDoc(doc(db, DRAFTS_COL, draftId()), draft, { merge: true });
+            if(!options.silent) setSaveState("تم حفظ مكانك في السحابة ✅");
+            return true;
+        } catch(e) {
+            console.warn("Draft save failed", e);
+            if(!options.silent) setSaveState("تم حفظ مكانك على هذا الجهاز، وتعذر رفعه للسحابة");
+            return false;
+        }
+    }
+
+    async function loadSessionDraft(user = currentUser, levelIndex = activeLevelIndex) {
+        let cloudDraft = null;
+        let localDraft = null;
+        try {
+            const snap = await getDoc(doc(db, DRAFTS_COL, draftId(user, levelIndex)));
+            if(snap.exists()) cloudDraft = snap.data();
+        } catch(e) { console.warn("Draft load failed", e); }
+        try {
+            localDraft = JSON.parse(localStorage.getItem(localDraftKey(user, levelIndex)) || "null");
+        } catch(e) {}
+        const cTime = cloudDraft?.updatedAt ? Date.parse(cloudDraft.updatedAt) : 0;
+        const lTime = localDraft?.updatedAt ? Date.parse(localDraft.updatedAt) : 0;
+        return lTime > cTime ? localDraft : cloudDraft;
+    }
+
+    async function clearSessionDraft(user = currentUser, levelIndex = activeLevelIndex) {
+        localStorage.removeItem(localDraftKey(user, levelIndex));
+        try { await deleteDoc(doc(db, DRAFTS_COL, draftId(user, levelIndex))); } catch(e) { console.warn("Draft delete failed", e); }
     }
 
     function syncAndSave(pushCloud = true) {
@@ -1288,7 +1381,7 @@
         ];
     }
 
-    window.initGameSession = (mode = "level-full", levelIndex = 0) => {
+    window.initGameSession = async (mode = "level-full", levelIndex = 0) => {
         if(mode === "level-full" && !canStartLevel(currentUser, levelIndex)) {
             alert("الباب لم يفتح بعد. تحتاج إكمال السابق والحصول على تصريح من الإدارة.");
             showLevelMap();
@@ -1300,6 +1393,20 @@
         if(!activeQueue.length) { alert("لا يوجد أسئلة أو تحديات في هذا المستوى"); return; }
         gameIdx = 0;
         tempAnswers = [];
+        currentPartialDraft = null;
+
+        const draft = await loadSessionDraft(currentUser, levelIndex);
+        if(draft && Array.isArray(draft.tempAnswers) && (draft.tempAnswers.length || draft.partialAnswer)) {
+            const resume = confirm(`يوجد حفظ سابق للمستوى ${levelIndex + 1}. هل تريد تكمل من مكان ما وقفت؟`);
+            if(resume) {
+                tempAnswers = draft.tempAnswers || [];
+                gameIdx = Math.max(0, Math.min(Number(draft.currentIndex || tempAnswers.length), activeQueue.length - 1));
+                currentPartialDraft = draft.partialAnswer || null;
+            } else {
+                await clearSessionDraft(currentUser, levelIndex);
+            }
+        }
+
         showScreen("screen-game");
         renderQuestion();
     };
@@ -1315,12 +1422,14 @@
         $("q-counter").innerText = `${gameIdx + 1} / ${activeQueue.length}`;
         $("progress-fill").style.width = `${Math.round((gameIdx / activeQueue.length) * 100)}%`;
         $("btn-next-q").style.display = "inline-block";
+        if($("btn-save-progress")) $("btn-save-progress").style.display = "inline-block";
 
         const container = $("q-interface");
         container.innerHTML = "";
 
         if(q.type === "text" || q.type === "coupleText") {
-            container.innerHTML = `<textarea id="ans-field" placeholder="اكتب إجابتك هنا..." style="min-height:150px;"></textarea>`;
+            const savedText = currentPartialDraft && currentPartialDraft.question === q.q && typeof currentPartialDraft.answer === "string" ? currentPartialDraft.answer : "";
+            container.innerHTML = `<textarea id="ans-field" placeholder="اكتب إجابتك هنا..." style="min-height:150px;">${esc(savedText)}</textarea>`;
         } else if(q.type === "options") {
             container.innerHTML = `<div id="options-box" class="grid grid-auto"></div>`;
             const box = $("options-box");
@@ -1394,7 +1503,7 @@
         }
     };
 
-    window.saveAndNext = (val) => {
+    window.saveAndNext = async (val) => {
         const q = activeQueue[gameIdx];
         tempAnswers.push({
             level: q.levelIndex + 1,
@@ -1404,8 +1513,14 @@
             question: q.q,
             answer: val
         });
+        currentPartialDraft = null;
         gameIdx++;
+        await saveDraftToCloud({ silent: true, partial: false });
         renderQuestion();
+    };
+
+    window.saveCurrentQuestionProgress = async () => {
+        await saveDraftToCloud({ silent: false, partial: true });
     };
 
     window.processAnswer = () => {
@@ -1433,8 +1548,9 @@
         saveAndNext(data);
     };
 
-    window.confirmExitSession = () => {
-        if(confirm("هل تريد الخروج من الجولة الحالية؟ لن يتم حفظ الإجابات غير المكتملة.")) showLevelMap();
+    window.confirmExitSession = async () => {
+        await saveDraftToCloud({ silent: false, partial: true });
+        if(confirm("تم حفظ مكانك. هل تريد الخروج من الجولة الحالية؟")) showLevelMap();
     };
 
     function dataUrlToBlob(dataUrl) {
@@ -1619,23 +1735,33 @@
     };
 
 
+    function withTimeout(promise, ms, fallbackMessage = "timeout") {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error(fallbackMessage)), ms))
+        ]);
+    }
+
     async function prepareAnswersForCloud(list) {
         return await Promise.all(list.map(async (item) => {
             const copy = { ...item };
+            if(copy.answer && typeof copy.answer === "object") return copy;
             const answer = String(copy.answer || "");
             try {
                 if(answer.startsWith("data:image")) {
-                    const url = await uploadDataUrlToStorage(answer, "mystery-game-images", "webp");
+                    const url = await withTimeout(uploadDataUrlToStorage(answer, "mystery-game-images", "webp"), 7000, "انتهت مهلة رفع الصورة");
                     copy.answer = { kind: "image", url };
                 } else if(answer.startsWith("data:audio")) {
-                    const url = await uploadDataUrlToStorage(answer, "mystery-game-audio", "webm");
+                    const url = await withTimeout(uploadDataUrlToStorage(answer, "mystery-game-audio", "webm"), 9000, "انتهت مهلة رفع الصوت");
                     copy.answer = { kind: "audio", url };
                 }
             } catch(e) {
-                console.warn("Storage upload failed. Falling back to compact text placeholder.", e);
-                copy.answer = answer.startsWith("data:")
-                    ? { kind: "upload-error", text: "تعذر رفع الوسائط. راجع Firebase Storage Rules." }
-                    : answer;
+                console.warn("Storage upload failed or timed out. Result will still be saved.", e);
+                copy.answer = answer.startsWith("data:image")
+                    ? { kind: "upload-error", text: "تم حفظ النتيجة، لكن تعذر رفع الصورة بسبب Firebase Storage أو ضعف الاتصال." }
+                    : answer.startsWith("data:audio")
+                        ? { kind: "upload-error", text: "تم حفظ النتيجة، لكن تعذر رفع الصوت بسبب Firebase Storage أو ضعف الاتصال." }
+                        : answer;
             }
             return copy;
         }));
@@ -1643,7 +1769,7 @@
 
     async function finishGame() {
         $("progress-fill").style.width = "100%";
-        setSaveState("جارٍ حفظ النتيجة والوسائط...");
+        setSaveState("جارٍ تسليم النتيجة... لن يتوقف الحفظ بسبب الوسائط");
         const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
         const reviewedAnswers = preparedAnswers.map((answer, index) => ({
             ...answer,
@@ -1687,12 +1813,14 @@
                 saveLocalOnly();
                 await saveProgressCloud({ silent: true });
             }
+            await clearSessionDraft(currentUser, activeLevelIndex);
             setSaveState("تم تسليم النتيجة للتصحيح ✅");
             showScreen("screen-finish");
         } catch(e) {
             console.error("Result save failed", e);
-            setSaveState("تعذر حفظ النتيجة في السحابة");
-            alert("صار خطأ أثناء حفظ النتيجة في Firebase. راجع إعدادات Firestore/Storage.");
+            setSaveState("تعذر حفظ النتيجة في السحابة — تم إبقاء حفظك المؤقت");
+            await saveDraftToCloud({ silent: true, partial: true });
+            alert("تعذر حفظ النتيجة في Firebase. تم حفظ مكانك مؤقتاً حتى لا تضيع إجاباتك. راجع Firestore Rules ثم جرّب التسليم مرة أخرى.");
         }
     }
 
