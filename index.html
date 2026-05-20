@@ -711,9 +711,10 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    const DATA_DOC = doc(db, "sahmMysteryGame", "mainData");
-    const RESULTS_COL = "sahmMysteryResults";
-    const DRAFTS_COL = "sahmMysteryDrafts";
+    // كل بيانات اللعبة محفوظة داخل siteConfig حتى تكون القراءة والكتابة أوضح وأسهل في Firebase Rules
+    const DATA_DOC = doc(db, "siteConfig", "mysteryGameData");
+    const RESULTS_COL = "siteConfig/mysteryGameData/results";
+    const DRAFTS_COL = "siteConfig/mysteryGameData/drafts";
     const BRANDING_LOGO_PATH = "branding/site-logo.png";
     const BRANDING_SHARE_PATH = "branding/share-card.png";
     const PUBLIC_BRANDING_LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media";
@@ -1481,36 +1482,63 @@
         }
     }
 
+    let audioAutoStopTimer = null;
+
     window.startAudioRec = async () => {
         try {
-            activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(activeStream);
+            activeStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            const preferred = "audio/webm;codecs=opus";
+            const options = MediaRecorder.isTypeSupported(preferred)
+                ? { mimeType: preferred, audioBitsPerSecond: 32000 }
+                : { audioBitsPerSecond: 32000 };
+
+            mediaRecorder = new MediaRecorder(activeStream, options);
             audioChunks = [];
-            mediaRecorder.ondataavailable = e => { if(e.data.size) audioChunks.push(e.data); };
+            mediaRecorder.ondataavailable = e => { if(e.data && e.data.size) audioChunks.push(e.data); };
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                clearTimeout(audioAutoStopTimer);
+                const type = mediaRecorder.mimeType || "audio/webm";
+                const audioBlob = new Blob(audioChunks, { type });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
                     const base64Audio = reader.result;
-                    $("audio-preview").src = base64Audio;
+                    if($("audio-preview")) $("audio-preview").src = base64Audio;
                     const preview = $("audio-preview-container");
-                    preview.style.display = "block";
-                    preview.querySelectorAll("button").forEach(b => b.remove());
-                    const btnSave = document.createElement("button");
-                    btnSave.innerText = "اعتمد التسجيل واكمل ➔";
-                    btnSave.className = "green";
-                    btnSave.onclick = () => saveAndNext(base64Audio);
-                    preview.appendChild(btnSave);
+                    if(preview) {
+                        preview.style.display = "block";
+                        preview.querySelectorAll("button").forEach(b => b.remove());
+                        const btnSave = document.createElement("button");
+                        btnSave.innerText = "اعتمد التسجيل واكمل ➔";
+                        btnSave.className = "green";
+                        btnSave.onclick = () => saveAndNext(base64Audio);
+                        preview.appendChild(btnSave);
+                    }
                 };
                 if(activeStream) activeStream.getTracks().forEach(track => track.stop());
                 activeStream = null;
             };
-            mediaRecorder.start();
+            mediaRecorder.start(1000);
             $("btn-start-rec").style.display = "none";
             $("btn-stop-rec").style.display = "inline-block";
-            $("rec-status").innerText = "جاري التسجيل... 🔴";
-        } catch (e) { alert("يجب السماح بالمايكروفون حتى يعمل هذا التحدي"); }
+            $("rec-status").innerText = "جاري التسجيل... 🔴 سيتم الإيقاف تلقائياً بعد 60 ثانية حتى يبقى الحفظ سريع";
+            audioAutoStopTimer = setTimeout(() => {
+                if(mediaRecorder && mediaRecorder.state === "recording") {
+                    $("rec-status").innerText = "تم إيقاف التسجيل تلقائياً وحفظه ✅";
+                    window.stopAudioRec();
+                }
+            }, 60000);
+        } catch (e) {
+            console.error(e);
+            alert("يجب السماح بالمايكروفون حتى يعمل هذا التحدي");
+        }
     };
 
     window.stopAudioRec = () => {
@@ -1760,34 +1788,91 @@
         ]);
     }
 
-    async function prepareAnswersForCloud(list) {
-        return await Promise.all(list.map(async (item) => {
-            const copy = { ...item };
-            if(copy.answer && typeof copy.answer === "object") return copy;
-            const answer = String(copy.answer || "");
+    function dataUrlSizeKB(dataUrl = "") {
+        return Math.round(String(dataUrl).length * 0.75 / 1024);
+    }
+
+    function shortError(e) {
+        return String(e?.code || e?.message || e || "خطأ غير معروف").slice(0, 180);
+    }
+
+    async function makeSmallImageDataUrl(dataUrl) {
+        return await compressImageDataUrl(dataUrl, 760, 0.52);
+    }
+
+    async function safeMediaAnswer(answer) {
+        const raw = String(answer || "");
+        if(raw.startsWith("data:image")) {
+            const small = await makeSmallImageDataUrl(raw);
             try {
-                if(answer.startsWith("data:image")) {
-                    const url = await withTimeout(uploadDataUrlToStorage(answer, "mystery-game-images", "webp"), 7000, "انتهت مهلة رفع الصورة");
-                    copy.answer = { kind: "image", url };
-                } else if(answer.startsWith("data:audio")) {
-                    const url = await withTimeout(uploadDataUrlToStorage(answer, "mystery-game-audio", "webm"), 9000, "انتهت مهلة رفع الصوت");
-                    copy.answer = { kind: "audio", url };
-                }
+                const url = await withTimeout(uploadDataUrlToStorage(small, "mystery-game-images", "webp"), 15000, "انتهت مهلة رفع الصورة");
+                return { kind: "image", url, savedIn: "storage", sizeKB: dataUrlSizeKB(small) };
             } catch(e) {
-                console.warn("Storage upload failed or timed out. Result will still be saved.", e);
-                copy.answer = answer.startsWith("data:image")
-                    ? { kind: "upload-error", text: "تم حفظ النتيجة، لكن تعذر رفع الصورة بسبب Firebase Storage أو ضعف الاتصال." }
-                    : answer.startsWith("data:audio")
-                        ? { kind: "upload-error", text: "تم حفظ النتيجة، لكن تعذر رفع الصوت بسبب Firebase Storage أو ضعف الاتصال." }
-                        : answer;
+                console.warn("Image storage upload failed, using Firestore fallback", e);
+                // احتياط: نحفظ صورة مضغوطة داخل النتيجة نفسها حتى تظهر في النتائج حتى لو Storage مقفل
+                if(dataUrlSizeKB(small) <= 850) {
+                    return { kind: "image-data", dataUrl: small, savedIn: "firestore-fallback", sizeKB: dataUrlSizeKB(small), uploadError: shortError(e) };
+                }
+                return { kind: "upload-error", mediaType: "image", text: "تعذر رفع الصورة وتعذر حفظها داخل Firestore لأنها كبيرة. فعّل Firebase Storage Rules.", uploadError: shortError(e) };
             }
-            return copy;
-        }));
+        }
+
+        if(raw.startsWith("data:audio")) {
+            try {
+                const url = await withTimeout(uploadDataUrlToStorage(raw, "mystery-game-audio", "webm"), 18000, "انتهت مهلة رفع الصوت");
+                return { kind: "audio", url, savedIn: "storage", sizeKB: dataUrlSizeKB(raw) };
+            } catch(e) {
+                console.warn("Audio storage upload failed, using Firestore fallback when possible", e);
+                // التسجيل محدود ومضغوط، لذلك غالباً يقدر ينحفظ داخل Firestore كاحتياط
+                if(dataUrlSizeKB(raw) <= 850) {
+                    return { kind: "audio-data", dataUrl: raw, savedIn: "firestore-fallback", sizeKB: dataUrlSizeKB(raw), uploadError: shortError(e) };
+                }
+                return { kind: "upload-error", mediaType: "audio", text: "تعذر رفع الصوت وتعذر حفظه داخل Firestore لأنه كبير. قلل مدة التسجيل أو فعّل Firebase Storage Rules.", uploadError: shortError(e) };
+            }
+        }
+
+        return answer;
+    }
+
+    async function prepareAnswersForCloud(list) {
+        const prepared = [];
+        for(const item of list) {
+            const copy = { ...item };
+            if(copy.answer && typeof copy.answer === "object") {
+                prepared.push(copy);
+                continue;
+            }
+            copy.answer = await safeMediaAnswer(copy.answer);
+            prepared.push(copy);
+        }
+        return prepared;
+    }
+
+    function stripHeavyMediaAnswer(answer) {
+        if(answer && typeof answer === "object") {
+            if(answer.kind === "image-data") return { kind: "upload-error", mediaType: "image", text: "تم حفظ النتيجة، لكن تم حذف الصورة من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصور كرابط." };
+            if(answer.kind === "audio-data") return { kind: "upload-error", mediaType: "audio", text: "تم حفظ النتيجة، لكن تم حذف الصوت من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصوت كرابط." };
+        }
+        return answer;
+    }
+
+    async function addResultDocumentSafe(resultEntry) {
+        try {
+            return await addDoc(collection(db, RESULTS_COL), resultEntry);
+        } catch(e) {
+            console.warn("Full result save failed, trying emergency slim result", e);
+            const slim = {
+                ...resultEntry,
+                mediaFallbackWarning: "تم حفظ نسخة طارئة لأن حجم الوسائط كان كبيراً أو Storage غير مفعّل.",
+                data: resultEntry.data.map(d => ({ ...d, answer: stripHeavyMediaAnswer(d.answer) }))
+            };
+            return await addDoc(collection(db, RESULTS_COL), slim);
+        }
     }
 
     async function finishGame() {
         $("progress-fill").style.width = "100%";
-        setSaveState("جارٍ تسليم النتيجة... لن يتوقف الحفظ بسبب الوسائط");
+        setSaveState("جارٍ حفظ النتيجة والوسائط في السحابة... إذا تعذر Storage سيتم حفظ نسخة احتياطية");
         const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
         const reviewedAnswers = preparedAnswers.map((answer, index) => ({
             ...answer,
@@ -1822,7 +1907,7 @@
         };
 
         try {
-            await addDoc(collection(db, RESULTS_COL), resultEntry);
+            await addResultDocumentSafe(resultEntry);
             if(activeMode === "level-full" && activeLevelIndex !== null) {
                 const p = getPlayerProgress(currentUser);
                 const levelNo = activeLevelIndex + 1;
@@ -1838,7 +1923,9 @@
             console.error("Result save failed", e);
             setSaveState("تعذر حفظ النتيجة في السحابة — تم إبقاء حفظك المؤقت");
             await saveDraftToCloud({ silent: true, partial: true });
-            alert("تعذر حفظ النتيجة في Firebase. تم حفظ مكانك مؤقتاً حتى لا تضيع إجاباتك. راجع Firestore Rules ثم جرّب التسليم مرة أخرى.");
+            alert(`تعذر حفظ النتيجة في Firebase. تم حفظ مكانك مؤقتاً حتى لا تضيع إجاباتك.
+سبب الخطأ: ${shortError(e)}
+تأكد أن Firestore Rules تسمح بالكتابة داخل siteConfig/mysteryGameData/results ثم جرّب التسليم مرة أخرى.`);
         }
     }
 
@@ -2550,8 +2637,21 @@
 
     function renderAnswer(answer = "") {
         if(answer && typeof answer === "object") {
-            if(answer.kind === "image") return `<img src="${esc(answer.url)}" class="answer-media" alt="answer image">`;
-            if(answer.kind === "audio") return `<audio controls src="${esc(answer.url)}"></audio>`;
+            if(answer.kind === "image") {
+                return `<div><img src="${esc(answer.url)}" class="answer-media" alt="answer image"><p class="hint">محفوظة في السحابة كرابط Storage ✅</p></div>`;
+            }
+            if(answer.kind === "audio") {
+                return `<div><audio controls src="${esc(answer.url)}"></audio><p class="hint">محفوظ في السحابة كرابط Storage ✅</p></div>`;
+            }
+            if(answer.kind === "image-data") {
+                return `<div><img src="${answer.dataUrl}" class="answer-media" alt="answer image"><p class="hint">محفوظة داخل Firestore كنسخة احتياطية ✅</p></div>`;
+            }
+            if(answer.kind === "audio-data") {
+                return `<div><audio controls src="${answer.dataUrl}"></audio><p class="hint">محفوظ داخل Firestore كنسخة احتياطية ✅</p></div>`;
+            }
+            if(answer.kind === "upload-error") {
+                return `<p class="hint" style="color:#7a0712;"><b>تنبيه الوسائط:</b> ${esc(answer.text || "تعذر حفظ الوسائط")} ${answer.uploadError ? `<br>السبب: ${esc(answer.uploadError)}` : ""}</p>`;
+            }
         }
         const a = String(answer || "");
         if(a.startsWith("data:image")) return `<img src="${a}" class="answer-media" alt="answer image">`;
