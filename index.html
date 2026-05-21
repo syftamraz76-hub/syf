@@ -1480,10 +1480,11 @@
     function getPlayerProgress(user = currentUser) {
         if(!state.progress || typeof state.progress !== "object") state.progress = {};
         if(!user) user = "guest";
-        if(!state.progress[user]) state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [] };
+        if(!state.progress[user]) state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [], retryPlans: {} };
         if(!Array.isArray(state.progress[user].completedLevels)) state.progress[user].completedLevels = [];
         if(!Array.isArray(state.progress[user].approvedLevels)) state.progress[user].approvedLevels = [];
         if(!Array.isArray(state.progress[user].pendingReviewLevels)) state.progress[user].pendingReviewLevels = [];
+        if(!state.progress[user].retryPlans || typeof state.progress[user].retryPlans !== "object" || Array.isArray(state.progress[user].retryPlans)) state.progress[user].retryPlans = {};
         return state.progress[user];
     }
 
@@ -1630,19 +1631,29 @@
         }).join("");
     }
 
-    function challengeToQueue(ch, levelIndex) {
-        return { ...ch, levelIndex, kind: "تحدي", modeKind: "challenge" };
+    function challengeToQueue(ch, levelIndex, itemIndex = 0) {
+        return { ...ch, levelIndex, kind: "تحدي", modeKind: "challenge", retryKey: `challenge:${itemIndex}`, itemLabel: `تحدي ${itemIndex + 1}` };
     }
 
-    function coupleToQueue(q, levelIndex) {
-        return { q, type: "coupleText", levelIndex, kind: "كبلز", modeKind: "couple" };
+    function coupleToQueue(q, levelIndex, itemIndex = 0) {
+        return { q, type: "coupleText", levelIndex, kind: "كبلز", modeKind: "couple", retryKey: `couple:${itemIndex}`, itemLabel: `سؤال كبلز ${itemIndex + 1}` };
+    }
+
+    function getRetryPlanForLevel(user = currentUser, levelIndex = activeLevelIndex) {
+        const levelNo = Number(levelIndex || 0) + 1;
+        const prog = getPlayerProgress(user);
+        const plan = prog.retryPlans && Array.isArray(prog.retryPlans[String(levelNo)]) ? prog.retryPlans[String(levelNo)] : [];
+        return plan.map(String);
     }
 
     function buildQueue(levelIndex = 0) {
-        return [
-            ...state.levels[levelIndex].challenges.map(ch => challengeToQueue(ch, levelIndex)),
-            ...state.levels[levelIndex].coupleQuestions.map(q => coupleToQueue(q, levelIndex))
+        const allItems = [
+            ...state.levels[levelIndex].challenges.map((ch, i) => challengeToQueue(ch, levelIndex, i)),
+            ...state.levels[levelIndex].coupleQuestions.map((q, i) => coupleToQueue(q, levelIndex, i))
         ];
+        const retryPlan = getRetryPlanForLevel(currentUser, levelIndex);
+        if(retryPlan.length) return allItems.filter(item => retryPlan.includes(item.retryKey));
+        return allItems;
     }
 
     window.initGameSession = async (mode = "level-full", levelIndex = 0) => {
@@ -1912,7 +1923,9 @@
             kind: q.kind,
             type: q.type,
             question: q.q,
-            answer: val
+            answer: val,
+            itemId: q.retryKey || "",
+            itemLabel: q.itemLabel || ""
         });
         currentPartialDraft = null;
         gameIdx++;
@@ -2317,7 +2330,8 @@
             pendingCount: reviewedAnswers.length,
             reviewedBy: "",
             reviewedAt: "",
-            data: reviewedAnswers
+            data: reviewedAnswers,
+            retryItems: getRetryPlanForLevel(currentUser, activeLevelIndex)
         };
 
         try {
@@ -2852,11 +2866,15 @@
                     </div>
                     <div class="row-controls">
                         <button onclick="approveNextLevelForPlayer('${encodeURIComponent(p.u)}')" class="green small">فتح المستوى التالي</button>
-                        <select id="reset-level-${safeDomId(p.u)}" style="max-width:220px;">
-                            ${state.levels.map((lvl, levelIndex) => `<option value="${levelIndex + 1}">إرجاع للمستوى ${levelIndex + 1}</option>`).join("")}
+                        <select id="reset-level-${safeDomId(p.u)}" style="max-width:220px;" onchange="renderRetryItemPicker('${encodeURIComponent(p.u)}', '${safeDomId(p.u)}')">
+                            ${state.levels.map((lvl, levelIndex) => `<option value="${levelIndex + 1}">المستوى ${levelIndex + 1}</option>`).join("")}
                         </select>
-                        <button onclick="resetPlayerToLevel('${encodeURIComponent(p.u)}', '${safeDomId(p.u)}')" class="gold small">إعادة مستوى محدد</button>
+                        <button onclick="resetPlayerToLevel('${encodeURIComponent(p.u)}', '${safeDomId(p.u)}')" class="gold small">إعادة المستوى كامل</button>
+                        <button onclick="renderRetryItemPicker('${encodeURIComponent(p.u)}', '${safeDomId(p.u)}')" class="blue small">تحديد سؤال/تحدي</button>
                         <button onclick="resetPlayerProgress('${encodeURIComponent(p.u)}')" class="danger small">تصفير التقدم</button>
+                    </div>
+                    <div id="retry-items-${safeDomId(p.u)}" style="margin-top:10px;"></div>
+                    <div class="hint">لإعادة جزء محدد: اختر المستوى، اضغط تحديد سؤال/تحدي، ثم حدد العناصر المطلوبة فقط.</div>
                     </div>
                 </div>
             `;
@@ -2879,6 +2897,84 @@
         alert(`تم فتح المستوى ${next} للاعب ${user}`);
     };
 
+    function getLevelRetryItems(levelNo) {
+        const idx = Number(levelNo) - 1;
+        const lvl = state.levels[idx];
+        if(!lvl) return [];
+        return [
+            ...(lvl.challenges || []).map((ch, i) => ({ key: `challenge:${i}`, label: `تحدي ${i + 1}`, type: typeLabel(ch.type || "text"), text: ch.q || "" })),
+            ...(lvl.coupleQuestions || []).map((q, i) => ({ key: `couple:${i}`, label: `سؤال كبلز ${i + 1}`, type: "إجابة نصية", text: q || "" }))
+        ];
+    }
+
+    window.renderRetryItemPicker = (userValue, safeId) => {
+        const user = decodeActionUser(userValue);
+        const levelNo = Number($(`reset-level-${safeId}`)?.value || 1);
+        const box = $(`retry-items-${safeId}`);
+        if(!box) return;
+        const prog = getPlayerProgress(user);
+        const selected = prog.retryPlans && Array.isArray(prog.retryPlans[String(levelNo)]) ? prog.retryPlans[String(levelNo)] : [];
+        const items = getLevelRetryItems(levelNo);
+        if(!items.length) {
+            box.innerHTML = `<div class="row-item"><p class="hint">لا توجد عناصر في هذا المستوى.</p></div>`;
+            return;
+        }
+        box.innerHTML = `
+            <div class="row-item" style="background:rgba(212,175,55,0.10);">
+                <h4>حدد بالضبط ما يعيده ${esc(user)} في المستوى ${levelNo}</h4>
+                <div class="row-controls" style="justify-content:flex-start;">
+                    <button type="button" onclick="toggleRetryItems('${safeId}', true)" class="secondary small">تحديد الكل</button>
+                    <button type="button" onclick="toggleRetryItems('${safeId}', false)" class="secondary small">إلغاء الكل</button>
+                </div>
+                <div class="perm-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));">
+                    ${items.map(item => `
+                        <label title="${esc(item.text)}">
+                            <input type="checkbox" class="retry-item-${safeId}" value="${esc(item.key)}" ${selected.includes(item.key) ? "checked" : ""}>
+                            <span><b>${esc(item.label)}</b> — ${esc(item.type)}<br><small>${esc(String(item.text).slice(0, 90))}${String(item.text).length > 90 ? "..." : ""}</small></span>
+                        </label>
+                    `).join("")}
+                </div>
+                <div class="row-controls">
+                    <button onclick="resetPlayerSelectedItems('${encodeURIComponent(user)}', '${safeId}')" class="gold small">إعادة العناصر المحددة فقط</button>
+                </div>
+            </div>
+        `;
+    };
+
+    window.toggleRetryItems = (safeId, checked) => {
+        document.querySelectorAll(`.retry-item-${safeId}`).forEach(cb => cb.checked = checked);
+    };
+
+    window.resetPlayerSelectedItems = async (userValue, safeId) => {
+        const user = decodeActionUser(userValue);
+        const levelNo = Number($(`reset-level-${safeId}`)?.value || 1);
+        const selected = Array.from(document.querySelectorAll(`.retry-item-${safeId}:checked`)).map(cb => cb.value);
+        if(!levelNo || levelNo < 1 || levelNo > state.levels.length) return alert("اختر مستوى صحيح");
+        if(!selected.length) return alert("حدد سؤالاً أو تحدياً واحداً على الأقل");
+        const names = getLevelRetryItems(levelNo).filter(x => selected.includes(x.key)).map(x => x.label).join("، ");
+        if(!confirm(`إرجاع ${user} لإعادة عناصر محددة من المستوى ${levelNo}:\n${names}\n\nسيبقى ما قبل هذا المستوى محفوظاً، وسيعيد اللاعب العناصر المحددة فقط.`)) return;
+
+        const prog = getPlayerProgress(user);
+        prog.retryPlans = prog.retryPlans && typeof prog.retryPlans === "object" ? prog.retryPlans : {};
+        prog.retryPlans[String(levelNo)] = selected;
+        Object.keys(prog.retryPlans).forEach(k => { if(Number(k) > levelNo) delete prog.retryPlans[k]; });
+        prog.completedLevels = (prog.completedLevels || []).map(Number).filter(n => n < levelNo);
+        prog.approvedLevels = (prog.approvedLevels || []).map(Number).filter(n => n <= levelNo);
+        if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+        prog.pendingReviewLevels = (prog.pendingReviewLevels || []).map(Number).filter(n => n < levelNo);
+        prog.completedLevels.sort((a, b) => a - b);
+        prog.approvedLevels.sort((a, b) => a - b);
+        prog.pendingReviewLevels.sort((a, b) => a - b);
+
+        try { localStorage.removeItem(localDraftKey(user, levelNo - 1)); } catch(e) {}
+        try { await deleteDoc(doc(db, DRAFTS_COL, draftId(user, levelNo - 1))); } catch(e) {}
+
+        saveLocalOnly();
+        await saveProgressCloud({ silent: true });
+        refreshAdminLists();
+        setSaveState(`تم تحديد إعادة ${selected.length} عنصر من المستوى ${levelNo} للاعب ${user} ✅`);
+    };
+
     window.resetPlayerToLevel = async (userValue, safeId) => {
         const user = decodeActionUser(userValue);
         const levelNo = Number($(`reset-level-${safeId}`)?.value || 1);
@@ -2887,6 +2983,8 @@
 سيبقى ما قبل هذا المستوى محفوظاً، وسيستطيع اللاعب إعادة هذا المستوى.`)) return;
 
         const prog = getPlayerProgress(user);
+        prog.retryPlans = prog.retryPlans && typeof prog.retryPlans === "object" ? prog.retryPlans : {};
+        Object.keys(prog.retryPlans).forEach(k => { if(Number(k) >= levelNo) delete prog.retryPlans[k]; });
         prog.completedLevels = (prog.completedLevels || []).map(Number).filter(n => n < levelNo);
         prog.approvedLevels = (prog.approvedLevels || []).map(Number).filter(n => n <= levelNo);
         if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
@@ -2909,7 +3007,7 @@
     window.resetPlayerProgress = (userValue) => {
         const user = decodeActionUser(userValue);
         if(confirm(`تصفير تقدم ${user}؟`)) {
-            state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [] };
+            state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [], retryPlans: {} };
             syncAndSave();
         }
     };
@@ -3078,6 +3176,7 @@
             if(passed) {
                 if(!prog.completedLevels.includes(levelNo)) prog.completedLevels.push(levelNo);
                 if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+                if(prog.retryPlans && prog.retryPlans[String(levelNo)]) delete prog.retryPlans[String(levelNo)];
                 prog.completedLevels.sort((a, b) => a - b);
                 prog.approvedLevels.sort((a, b) => a - b);
             }
