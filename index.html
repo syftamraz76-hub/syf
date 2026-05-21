@@ -657,7 +657,7 @@
         <div id="tab-progress" class="tab-pane">
             <div class="admin-section">
                 <h3>🧭 تقدم اللاعبين</h3>
-                <p class="hint">هنا تشوف المستويات المكتملة والتصاريح المفتوحة لكل لاعب، وتقدر تصفر تقدمه إذا احتجت.</p>
+                <p class="hint">هنا تشوف المستويات المكتملة والتصاريح المفتوحة لكل لاعب. تقدر تفتح التالي، أو ترجع لاعب لمستوى محدد بدون تصفير كل تقدمه.</p>
             </div>
             <div id="list-progress"></div>
         </div>
@@ -930,6 +930,7 @@
     let lastLocalEditAt = 0;
     let activeReviewDocId = null;
     let reviewScrollRestore = null;
+    let adminUiRestore = null;
     let pendingFileAnswer = null;
 
     function setSaveState(text, show = true) {
@@ -1118,8 +1119,53 @@
         try { await deleteDoc(doc(db, DRAFTS_COL, draftId(user, levelIndex))); } catch(e) { console.warn("Draft delete failed", e); }
     }
 
+    function getActiveAdminTabId() {
+        const activePane = document.querySelector(".tab-pane.active-pane");
+        return activePane ? activePane.id.replace("tab-", "") : "";
+    }
+
+    function captureAdminUiState() {
+        const panel = $("screen-admin-main");
+        if(!panel) return null;
+        return {
+            tabId: getActiveAdminTabId(),
+            scrollTop: panel.scrollTop || 0,
+            challengeLevel: $("challenge-level-select")?.value || "",
+            coupleLevel: $("couple-level-select")?.value || "",
+            resultPlayer: $("result-filter-player")?.value || "",
+            resultLevel: $("result-filter-level")?.value || "",
+            openDetails: Array.from(document.querySelectorAll("#screen-admin-main details[open][id]")).map(d => d.id),
+            focusId: document.activeElement && document.activeElement.id ? document.activeElement.id : ""
+        };
+    }
+
+    function restoreAdminSelectorValues(restore) {
+        if(!restore) return;
+        if($("challenge-level-select") && restore.challengeLevel !== "") $("challenge-level-select").value = restore.challengeLevel;
+        if($("couple-level-select") && restore.coupleLevel !== "") $("couple-level-select").value = restore.coupleLevel;
+        if($("result-filter-player")) $("result-filter-player").value = restore.resultPlayer || "";
+        if($("result-filter-level")) $("result-filter-level").value = restore.resultLevel || "";
+    }
+
+    function restoreAdminUiState(restore) {
+        if(!restore) return;
+        requestAnimationFrame(() => {
+            restore.openDetails?.forEach(id => {
+                const el = $(id);
+                if(el) el.open = true;
+            });
+            const panel = $("screen-admin-main");
+            if(panel) panel.scrollTop = restore.scrollTop || 0;
+            if(restore.focusId && $(restore.focusId)) {
+                try { $(restore.focusId).focus({ preventScroll: true }); } catch(e) {}
+            }
+            adminUiRestore = null;
+        });
+    }
+
     function syncAndSave(pushCloud = true) {
         lastLocalEditAt = Date.now();
+        adminUiRestore = captureAdminUiState();
         saveLocalOnly();
         applyVisuals();
         refreshAdminLists();
@@ -2236,8 +2282,7 @@
         state.levels[idx].title = $(`lvl-title-${idx}`).value.trim() || state.levels[idx].title;
         state.levels[idx].desc = $(`lvl-desc-${idx}`).value.trim() || state.levels[idx].desc;
         syncAndSave();
-        fillLevelSelects();
-        renderChallengeEditor();
+        setSaveState("تم حفظ بيانات المستوى للجميع ✅");
     };
 
     window.updateChallenge = (levelIdx, chIdx) => {
@@ -2249,14 +2294,13 @@
         if(type === "options" && !ch.opts.length) { alert("اكتب خيارات للتحدي"); return; }
         state.levels[levelIdx].challenges[chIdx] = ch;
         syncAndSave();
-        alert("تم حفظ التحدي للجميع");
+        setSaveState("تم حفظ التحدي للجميع ✅");
     };
 
     window.deleteChallenge = (levelIdx, chIdx) => {
         if(confirm("حذف هذا التحدي؟")) {
             state.levels[levelIdx].challenges.splice(chIdx, 1);
             syncAndSave();
-            renderChallengeEditor();
         }
     };
 
@@ -2272,7 +2316,6 @@
         state.levels[idx].challenges.push(ch);
         $("ch-new-text").value = ""; $("ch-new-opts").value = "";
         syncAndSave();
-        renderChallengeEditor();
     };
 
     window.renderCoupleEditor = () => {
@@ -2505,9 +2548,11 @@
     }
 
     function refreshAdminLists() {
+        const restore = adminUiRestore || captureAdminUiState();
         renderDashboard();
         renderAppearanceFields();
         fillLevelSelects();
+        restoreAdminSelectorValues(restore);
 
         if($("list-access-requests")) renderAccessRequests("pending");
         if($("list-progress")) renderProgressList();
@@ -2552,6 +2597,7 @@
         if($("list-challenges")) renderChallengeEditor();
         if($("couple-questions-editor")) renderCoupleEditor();
         if($("list-results")) renderResults();
+        restoreAdminUiState(restore);
     }
 
     window.renderProgressList = () => {
@@ -2583,8 +2629,12 @@
                         <span class="pill status-pending">بانتظار التصحيح: ${score.pending}</span>
                     </div>
                     <div class="row-controls">
-                        <button onclick="approveNextLevelForPlayer('${esc(p.u)}')" class="green small">فتح المستوى التالي</button>
-                        <button onclick="resetPlayerProgress('${esc(p.u)}')" class="danger small">تصفير التقدم</button>
+                        <button onclick="approveNextLevelForPlayer('${encodeURIComponent(p.u)}')" class="green small">فتح المستوى التالي</button>
+                        <select id="reset-level-${safeDomId(p.u)}" style="max-width:220px;">
+                            ${state.levels.map((lvl, levelIndex) => `<option value="${levelIndex + 1}">إرجاع للمستوى ${levelIndex + 1}</option>`).join("")}
+                        </select>
+                        <button onclick="resetPlayerToLevel('${encodeURIComponent(p.u)}', '${safeDomId(p.u)}')" class="gold small">إعادة مستوى محدد</button>
+                        <button onclick="resetPlayerProgress('${encodeURIComponent(p.u)}')" class="danger small">تصفير التقدم</button>
                     </div>
                 </div>
             `;
@@ -2592,7 +2642,12 @@
         restoreReviewScrollIfNeeded();
     };
 
-    window.approveNextLevelForPlayer = (user) => {
+    function decodeActionUser(userValue) {
+        try { return decodeURIComponent(userValue); } catch(e) { return userValue; }
+    }
+
+    window.approveNextLevelForPlayer = (userValue) => {
+        const user = decodeActionUser(userValue);
         const prog = getPlayerProgress(user);
         const maxCompleted = prog.completedLevels.length ? Math.max(...prog.completedLevels) : 0;
         const next = Math.min(maxCompleted + 1, 10);
@@ -2602,7 +2657,35 @@
         alert(`تم فتح المستوى ${next} للاعب ${user}`);
     };
 
-    window.resetPlayerProgress = (user) => {
+    window.resetPlayerToLevel = async (userValue, safeId) => {
+        const user = decodeActionUser(userValue);
+        const levelNo = Number($(`reset-level-${safeId}`)?.value || 1);
+        if(!levelNo || levelNo < 1 || levelNo > state.levels.length) return alert("اختر مستوى صحيح");
+        if(!confirm(`إرجاع ${user} للمستوى ${levelNo} فقط؟
+سيبقى ما قبل هذا المستوى محفوظاً، وسيستطيع اللاعب إعادة هذا المستوى.`)) return;
+
+        const prog = getPlayerProgress(user);
+        prog.completedLevels = (prog.completedLevels || []).map(Number).filter(n => n < levelNo);
+        prog.approvedLevels = (prog.approvedLevels || []).map(Number).filter(n => n <= levelNo);
+        if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+        prog.pendingReviewLevels = (prog.pendingReviewLevels || []).map(Number).filter(n => n < levelNo);
+        prog.completedLevels.sort((a, b) => a - b);
+        prog.approvedLevels.sort((a, b) => a - b);
+        prog.pendingReviewLevels.sort((a, b) => a - b);
+
+        for(let i = levelNo - 1; i < state.levels.length; i++) {
+            try { localStorage.removeItem(localDraftKey(user, i)); } catch(e) {}
+            try { await deleteDoc(doc(db, DRAFTS_COL, draftId(user, i))); } catch(e) {}
+        }
+
+        saveLocalOnly();
+        await saveProgressCloud({ silent: true });
+        refreshAdminLists();
+        setSaveState(`تم إرجاع ${user} للمستوى ${levelNo} ✅`);
+    };
+
+    window.resetPlayerProgress = (userValue) => {
+        const user = decodeActionUser(userValue);
         if(confirm(`تصفير تقدم ${user}؟`)) {
             state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [] };
             syncAndSave();
