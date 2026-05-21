@@ -36,8 +36,20 @@
 
         * { box-sizing: border-box; }
 
+        html {
+            min-height: 100%;
+            background:
+                radial-gradient(circle at top right, rgba(212,175,55,0.28), transparent 36%),
+                radial-gradient(circle at bottom left, rgba(139,0,0,0.36), transparent 42%),
+                linear-gradient(135deg, #160708 0%, #331011 45%, #070707 100%);
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+        }
+
         body {
             min-height: 100vh;
+            min-height: 100svh;
             margin: 0;
             color: var(--text-dark);
             font-family: Tahoma, Arial, sans-serif;
@@ -47,7 +59,7 @@
                 linear-gradient(135deg, #160708 0%, #331011 45%, #070707 100%);
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
+            background-attachment: scroll;
             background-repeat: no-repeat;
             display: flex;
             justify-content: center;
@@ -464,6 +476,13 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
         @media (max-width: 720px) {
+            html, body {
+                min-height: 100dvh;
+                background-attachment: scroll !important;
+                background-size: cover !important;
+                background-position: center center !important;
+                background-repeat: no-repeat !important;
+            }
             .container { padding: 18px; border-radius: 22px; }
             .grid-2, .grid-3, .inline-fields { grid-template-columns: 1fr; }
             .admin-panel { max-height: 88vh; }
@@ -603,7 +622,12 @@
                     </div>
                 </div>
                 <input type="text" id="conf-logo" placeholder="رابط اللوجو - اختياري إذا عندك رابط مباشر">
-                <input type="text" id="conf-bg" placeholder="رابط الخلفية - اتركه فارغ لاستخدام الخلفية الفخمة">
+                <input type="text" id="conf-bg" placeholder="رابط الخلفية - اتركه فارغ = لا تغيّر الخلفية المحفوظة">
+                <div class="grid grid-2">
+                    <button type="button" onclick="restoreBackgroundBackup()" class="secondary">↩️ استرجاع آخر خلفية محفوظة بالجهاز</button>
+                    <button type="button" onclick="copyCurrentBackgroundToInput()" class="blue">📌 وضع الخلفية الحالية في الخانة</button>
+                </div>
+                <p class="hint">حماية السحابة: ترك خانة الخلفية فارغة لا يحذف الصورة ولا يغيرها.</p>
                 <input type="text" id="conf-title" placeholder="عنوان اللعبة">
                 <textarea id="conf-desc" placeholder="وصف البداية"></textarea>
                 <textarea id="conf-rules" placeholder="القوانين - كل قانون في سطر"></textarea>
@@ -926,6 +950,91 @@
         return sanitizeBrandingInState(merged);
     }
 
+
+    const BG_BACKUP_KEY = "mystery_game_last_good_background_url";
+    const BG_BACKUP_KEYS = [
+        BG_BACKUP_KEY,
+        "mystery_game_previous_background_url",
+        "sahm_last_good_bg"
+    ];
+    const STATE_BACKUP_KEYS = [
+        "sahm_mystery_cloud_v1",
+        "sahm_mystery_v2",
+        "sahm_db"
+    ];
+
+    function isUsableUrl(value) {
+        const v = String(value || "").trim();
+        return /^https?:\/\//i.test(v) || v.startsWith("data:image/");
+    }
+
+    function rememberBackgroundBackup(bg) {
+        const value = String(bg || "").trim();
+        if(!isUsableUrl(value)) return;
+        try {
+            localStorage.setItem(BG_BACKUP_KEY, value);
+            localStorage.setItem("mystery_game_previous_background_url", value);
+        } catch(e) {}
+    }
+
+    function findBackgroundBackup() {
+        for(const key of BG_BACKUP_KEYS) {
+            try {
+                const value = localStorage.getItem(key);
+                if(isUsableUrl(value)) return value.trim();
+            } catch(e) {}
+        }
+        for(const key of STATE_BACKUP_KEYS) {
+            try {
+                const raw = localStorage.getItem(key);
+                if(!raw) continue;
+                const obj = JSON.parse(raw);
+                const value = obj && obj.config && obj.config.bg;
+                if(isUsableUrl(value)) return String(value).trim();
+            } catch(e) {}
+        }
+        return "";
+    }
+
+    async function restoreMissingBackgroundFromBackup(source = "auto") {
+        if(String(state.config.bg || "").trim()) {
+            rememberBackgroundBackup(state.config.bg);
+            return true;
+        }
+        const recovered = findBackgroundBackup();
+        if(!recovered) return false;
+        state.config.bg = recovered;
+        rememberBackgroundBackup(recovered);
+        saveLocalOnly();
+        applyVisuals();
+        if($("conf-bg")) $("conf-bg").value = recovered;
+        try {
+            await updateDoc(DATA_DOC, {
+                "config.bg": recovered,
+                updatedAt: new Date().toISOString()
+            });
+            setSaveState(source === "manual" ? "تم استرجاع الخلفية ورفعها للسحابة ✅" : "تم استرجاع الخلفية المحذوفة من النسخة المحلية ✅");
+            return true;
+        } catch(e) {
+            console.warn("Background restore failed", e);
+            setSaveState("تم استرجاع الخلفية على هذا الجهاز، لكن تعذر رفعها للسحابة");
+            return false;
+        }
+    }
+
+    window.restoreBackgroundBackup = async () => {
+        if(String(state.config.bg || "").trim()) rememberBackgroundBackup(state.config.bg);
+        state.config.bg = "";
+        const ok = await restoreMissingBackgroundFromBackup("manual");
+        if(!ok) alert("ما لقيت نسخة قديمة للخلفية داخل هذا الجهاز. إذا عندك رابط الصورة حطه في خانة الخلفية واضغط حفظ.");
+    };
+
+    window.copyCurrentBackgroundToInput = () => {
+        const current = String(state.config.bg || findBackgroundBackup() || "").trim();
+        if($("conf-bg")) $("conf-bg").value = current;
+        if(current) rememberBackgroundBackup(current);
+    };
+
     let stored = null;
     try { stored = JSON.parse(localStorage.getItem("sahm_mystery_cloud_v1") || localStorage.getItem("sahm_mystery_v2") || localStorage.getItem("sahm_db") || "null"); } catch(e) {}
     let state = migrateState(stored);
@@ -962,8 +1071,13 @@
     }
 
     function cloudGameData() {
+        const configPayload = { ...(state.config || {}) };
+        // حماية مهمة: لا نرسل خلفية فاضية للسحابة حتى لا تنمسح الخلفية المحفوظة سابقاً.
+        if(!String(configPayload.bg || "").trim()) delete configPayload.bg;
+        if(!String(configPayload.logo || "").trim()) delete configPayload.logo;
+        if(!String(configPayload.shareImage || "").trim()) delete configPayload.shareImage;
         return {
-            config: state.config,
+            config: configPayload,
             admins: state.admins,
             players: state.players,
             levels: state.levels,
@@ -974,6 +1088,7 @@
     }
 
     function saveLocalOnly() {
+        if(state && state.config && state.config.bg) rememberBackgroundBackup(state.config.bg);
         localStorage.setItem("sahm_mystery_cloud_v1", JSON.stringify(state));
     }
 
@@ -993,6 +1108,11 @@
         if(saveInFlight) {
             savePendingAfterInflight = true;
             return saveInFlight;
+        }
+
+        if(!cloudLoaded && !options.force) {
+            if(!options.silent) setSaveState("بانتظار تحميل بيانات السحابة قبل الحفظ حتى لا يتم استبدال البيانات القديمة...");
+            return false;
         }
 
         if(!options.silent) setSaveState("جارٍ الحفظ السريع على السحابة...");
@@ -1080,7 +1200,7 @@
         if(!q) return null;
         let val = "";
         if(q.type === "text" || q.type === "coupleText") val = $("ans-field")?.value?.trim() || "";
-        else if(q.type === "draw" && $("sig-pad")) val = $("sig-pad").toDataURL("image/webp", 0.68);
+        else if(q.type === "draw" && $("sig-pad")) val = $("sig-pad").toDataURL("image/webp", 0.55);
         else if(q.type === "file" && pendingFileAnswer) val = pendingFileAnswer;
         else return null;
         if(!allowEmpty && !val) return null;
@@ -1206,7 +1326,10 @@
                 cloudLoaded = true;
                 return;
             }
-            state = sanitizeBrandingInState(migrateState(snap.data()));
+            const remoteData = snap.data();
+            state = sanitizeBrandingInState(migrateState(remoteData));
+            if(remoteData && remoteData.config && String(remoteData.config.bg || "").trim()) rememberBackgroundBackup(remoteData.config.bg);
+            else await restoreMissingBackgroundFromBackup("auto");
             lastSavedHash = compactHash(cloudGameData());
             saveLocalOnly();
             applyVisuals();
@@ -1267,10 +1390,22 @@
         const preview = $("conf-logo-preview");
         if(preview) preview.src = logo;
         updateBrandMeta();
-        if(state.config.bg) {
-            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.26), rgba(0,0,0,0.48)), url('${state.config.bg}')`;
+        const bgUrl = String(state.config.bg || findBackgroundBackup() || "").trim();
+        if(bgUrl && !state.config.bg) state.config.bg = bgUrl;
+        if(bgUrl) {
+            const safeBg = bgUrl.replace(/["\\]/g, "\\$&");
+            const bgImage = `linear-gradient(rgba(0,0,0,0.20), rgba(0,0,0,0.42)), url("${safeBg}")`;
+            document.body.style.backgroundImage = bgImage;
+            document.documentElement.style.backgroundImage = bgImage;
+            [document.body, document.documentElement].forEach(el => {
+                el.style.backgroundSize = "cover";
+                el.style.backgroundPosition = "center center";
+                el.style.backgroundRepeat = "no-repeat";
+                el.style.backgroundAttachment = "scroll";
+            });
         } else {
             document.body.style.backgroundImage = "";
+            document.documentElement.style.backgroundImage = "";
         }
     }
 
@@ -1725,7 +1860,7 @@
             for(const file of files) {
                 let dataUrl = await readFileAsDataURL(file);
                 const isImage = String(file.type || "").startsWith("image/") || String(dataUrl).startsWith("data:image");
-                if(isImage) dataUrl = await compressImageDataUrl(dataUrl, 1100, 0.72);
+                if(isImage) dataUrl = await compressImageDataUrl(dataUrl, 720, 0.55);
                 const item = {
                     kind: "pending-file",
                     fileName: file.name || "ملف مرفق",
@@ -1750,7 +1885,7 @@
                 preview.style.display = "block";
                 preview.innerHTML = `<b>تم اختيار ${preparedFiles.length} ملف</b>${previewHtml}`;
             }
-            if(status) status.innerText = "تم تجهيز الملفات. اضغط اعتماد الملفات واكمل.";
+            if(status) status.innerText = "تم ضغط وتجهيز الملفات. اضغط اعتماد الملفات واكمل.";
             if(btn) btn.disabled = false;
         } catch(e) {
             console.error(e);
@@ -1764,7 +1899,7 @@
         const btn = $("btn-submit-file");
         if(btn) btn.disabled = true;
         const count = pendingFileAnswer.kind === "pending-files" ? pendingFileAnswer.files.length : 1;
-        if(status) status.innerText = `جارٍ حفظ ${count} ملف في السحابة...`;
+        if(status) status.innerText = `جارٍ رفع ${count} ملف بسرعة...`;
         const savedAnswer = await safeMediaAnswer(pendingFileAnswer);
         await saveAndNext(savedAnswer);
     };
@@ -1793,7 +1928,7 @@
         const q = activeQueue[gameIdx];
         let val = "";
         if(q.type === "text" || q.type === "coupleText") val = $("ans-field").value.trim();
-        if(q.type === "draw") val = $("sig-pad").toDataURL("image/webp", 0.7);
+        if(q.type === "draw") val = $("sig-pad").toDataURL("image/webp", 0.58);
         if((q.type === "text" || q.type === "coupleText") && val === "") { alert("الرجاء كتابة الإجابة"); return; }
         saveAndNext(val);
     };
@@ -1804,12 +1939,12 @@
         if(!v || !c || !v.srcObject) { alert("الكاميرا غير جاهزة"); return; }
         const sourceW = v.videoWidth || 640;
         const sourceH = v.videoHeight || 480;
-        const maxSide = 900;
+        const maxSide = 720;
         const ratio = Math.min(1, maxSide / Math.max(sourceW, sourceH));
         c.width = Math.round(sourceW * ratio);
         c.height = Math.round(sourceH * ratio);
         c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-        const data = c.toDataURL("image/webp", 0.68);
+        const data = c.toDataURL("image/webp", 0.58);
         stopActiveMedia();
         saveAndNext(data);
     };
@@ -1848,7 +1983,7 @@
 
     async function uploadDataUrlToStorage(dataUrl, folder, ext) {
         const optimizedDataUrl = String(dataUrl || "").startsWith("data:image")
-            ? await compressImageDataUrl(dataUrl, 900, 0.72)
+            ? await compressImageDataUrl(dataUrl, 640, 0.50)
             : dataUrl;
         const blob = dataUrlToBlob(optimizedDataUrl);
         const safeUser = String(currentUser || "guest").replace(/[^\w\u0600-\u06FF-]+/g, "_");
@@ -2017,15 +2152,26 @@
     }
 
     async function makeSmallImageDataUrl(dataUrl) {
-        return await compressImageDataUrl(dataUrl, 760, 0.52);
+        return await compressImageDataUrl(dataUrl, 640, 0.50);
+    }
+
+    async function mapWithConcurrency(items, limit, worker) {
+        const source = Array.isArray(items) ? items : [];
+        const results = new Array(source.length);
+        let index = 0;
+        const runners = Array.from({ length: Math.min(limit, source.length || 1) }, async () => {
+            while(index < source.length) {
+                const current = index++;
+                results[current] = await worker(source[current], current);
+            }
+        });
+        await Promise.all(runners);
+        return results;
     }
 
     async function safeMediaAnswer(answer) {
         if(answer && typeof answer === "object" && answer.kind === "pending-files" && Array.isArray(answer.files)) {
-            const items = [];
-            for(const fileAnswer of answer.files) {
-                items.push(await safeMediaAnswer(fileAnswer));
-            }
+            const items = await mapWithConcurrency(answer.files, 4, fileAnswer => safeMediaAnswer(fileAnswer));
             return {
                 kind: "files",
                 items,
@@ -2042,7 +2188,7 @@
             const folder = isImage ? "mystery-game-uploaded-images" : "mystery-game-files";
             const finalData = isImage ? await makeSmallImageDataUrl(rawFile) : rawFile;
             try {
-                const url = await withTimeout(uploadDataUrlToStorage(finalData, folder, ext), isImage ? 15000 : 22000, "انتهت مهلة رفع الملف");
+                const url = await withTimeout(uploadDataUrlToStorage(finalData, folder, ext), isImage ? 8500 : 14000, "انتهت مهلة رفع الملف");
                 return {
                     kind: isImage ? "image" : "file",
                     url,
@@ -2069,7 +2215,7 @@
         if(raw.startsWith("data:image")) {
             const small = await makeSmallImageDataUrl(raw);
             try {
-                const url = await withTimeout(uploadDataUrlToStorage(small, "mystery-game-images", "webp"), 15000, "انتهت مهلة رفع الصورة");
+                const url = await withTimeout(uploadDataUrlToStorage(small, "mystery-game-images", "webp"), 8500, "انتهت مهلة رفع الصورة");
                 return { kind: "image", url, savedIn: "storage", sizeKB: dataUrlSizeKB(small) };
             } catch(e) {
                 console.warn("Image storage upload failed, using Firestore fallback", e);
@@ -2083,7 +2229,7 @@
 
         if(raw.startsWith("data:audio")) {
             try {
-                const url = await withTimeout(uploadDataUrlToStorage(raw, "mystery-game-audio", "webm"), 18000, "انتهت مهلة رفع الصوت");
+                const url = await withTimeout(uploadDataUrlToStorage(raw, "mystery-game-audio", "webm"), 12000, "انتهت مهلة رفع الصوت");
                 return { kind: "audio", url, savedIn: "storage", sizeKB: dataUrlSizeKB(raw) };
             } catch(e) {
                 console.warn("Audio storage upload failed, using Firestore fallback when possible", e);
@@ -2099,20 +2245,17 @@
     }
 
     async function prepareAnswersForCloud(list) {
-        const prepared = [];
-        for(const item of list) {
+        return await mapWithConcurrency(list || [], 4, async (item) => {
             const copy = { ...item };
             if(copy.answer && typeof copy.answer === "object") {
                 if(copy.answer.kind === "pending-file" || copy.answer.kind === "pending-files") {
                     copy.answer = await safeMediaAnswer(copy.answer);
                 }
-                prepared.push(copy);
-                continue;
+                return copy;
             }
             copy.answer = await safeMediaAnswer(copy.answer);
-            prepared.push(copy);
-        }
-        return prepared;
+            return copy;
+        });
     }
 
     function stripHeavyMediaAnswer(answer) {
@@ -2143,7 +2286,7 @@
 
     async function finishGame() {
         $("progress-fill").style.width = "100%";
-        setSaveState("جارٍ حفظ النتيجة والوسائط في السحابة... إذا تعذر Storage سيتم حفظ نسخة احتياطية");
+        setSaveState("جارٍ الحفظ السريع للنتيجة والوسائط...");
         const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
         const reviewedAnswers = preparedAnswers.map((answer, index) => ({
             ...answer,
@@ -2228,7 +2371,15 @@
 
     window.syncVisuals = () => {
         state.config.logo = $("conf-logo").value.trim() || state.config.logo;
-        state.config.bg = $("conf-bg").value.trim();
+        const nextBg = $("conf-bg").value.trim();
+        // لا نحذف الخلفية أبداً إذا تركت الخانة فاضية. الفاضي يعني: لا تغيّر الخلفية ولا نرسل قيمة فاضية للسحابة.
+        if(nextBg) {
+            state.config.bg = nextBg;
+            rememberBackgroundBackup(nextBg);
+        } else if(!state.config.bg) {
+            const recovered = findBackgroundBackup();
+            if(recovered) state.config.bg = recovered;
+        }
         state.config.title = $("conf-title").value.trim() || state.config.title;
         state.config.desc = $("conf-desc").value.trim() || state.config.desc;
         state.config.primaryColor = $("conf-color").value || state.config.primaryColor;
@@ -2611,7 +2762,7 @@
         if(!$("conf-logo")) return;
         $("conf-logo").value = state.config.logo || "";
         if($("conf-logo-preview")) $("conf-logo-preview").src = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
-        $("conf-bg").value = state.config.bg || "";
+        $("conf-bg").value = state.config.bg || findBackgroundBackup() || "";
         $("conf-title").value = state.config.title || "";
         $("conf-desc").value = state.config.desc || "";
         $("conf-rules").value = (state.config.rules || []).join("\n");
