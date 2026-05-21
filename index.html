@@ -294,6 +294,34 @@
             border: 1px solid var(--line);
         }
 
+        .file-upload-box {
+            background: rgba(255,255,255,0.88);
+            border: 1px dashed rgba(139,0,0,0.38);
+            border-radius: 18px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .file-preview-card {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        .file-preview-card img { max-width: 220px; max-height: 220px; border-radius: 12px; border: 1px solid var(--line); }
+        .file-link {
+            display: inline-block;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(139,0,0,0.08);
+            border: 1px solid var(--line);
+            color: var(--primary-red);
+            font-weight: bold;
+            text-decoration: none;
+            margin-top: 8px;
+        }
+
         .floating-admin-btn {
             position: fixed;
             bottom: 20px;
@@ -592,7 +620,7 @@
         <div id="tab-challenges" class="tab-pane">
             <div class="admin-section">
                 <h3>⚔️ تحديات المستويات</h3>
-                <p class="hint">كل مستوى يسمح بثلاثة تحديات فقط. تستطيع تغيير نوع التحدي: نصي، اختيارات، كاميرا، توقيع، أو تسجيل صوتي.</p>
+                <p class="hint">كل مستوى يسمح بثلاثة تحديات فقط. تستطيع تغيير نوع التحدي: نصي، اختيارات، كاميرا، توقيع، تسجيل صوتي، أو رفع ملف/صورة من الألبوم.</p>
                 <select id="challenge-level-select" onchange="renderChallengeEditor()"></select>
                 <div id="list-challenges"></div>
                 <div class="row-item">
@@ -604,6 +632,7 @@
                         <option value="camera">كاميرا 📸</option>
                         <option value="draw">توقيع ✍️</option>
                         <option value="audio">تسجيل صوتي 🎤</option>
+                        <option value="file">رفع ملف / صورة من الألبوم 🖼️</option>
                     </select>
                     <input type="text" id="ch-new-opts" placeholder="الخيارات مفصولة بفاصلة ," style="display:none;">
                     <button onclick="addChallengeToSelectedLevel()" class="blue">إضافة تحدي</button>
@@ -899,6 +928,9 @@
     let savePendingAfterInflight = false;
     let lastSavedHash = "";
     let lastLocalEditAt = 0;
+    let activeReviewDocId = null;
+    let reviewScrollRestore = null;
+    let pendingFileAnswer = null;
 
     function setSaveState(text, show = true) {
         const box = $("save-state");
@@ -1007,6 +1039,11 @@
             copy.answer = { kind: "draft-image", text: "تم حفظ مكان إجابة صورة/توقيع. إذا خرجت قبل التسليم قد تحتاج إعادة رفعها." };
         } else if(typeof answer === "string" && answer.startsWith("data:audio")) {
             copy.answer = { kind: "draft-audio", text: "تم حفظ مكان إجابة صوتية. إذا خرجت قبل التسليم قد تحتاج إعادة تسجيلها." };
+        } else if(answer && typeof answer === "object" && answer.kind === "pending-file") {
+            const kb = Number(answer.sizeKB || dataUrlSizeKB(answer.dataUrl || ""));
+            if(kb > 850) {
+                copy.answer = { kind: "draft-file", fileName: answer.fileName || "ملف", text: "تم حفظ مكان إجابة ملف. إذا خرجت قبل التسليم قد تحتاج إعادة رفع الملف لأنه كبير." };
+            }
         }
         return copy;
     }
@@ -1017,6 +1054,7 @@
         let val = "";
         if(q.type === "text" || q.type === "coupleText") val = $("ans-field")?.value?.trim() || "";
         else if(q.type === "draw" && $("sig-pad")) val = $("sig-pad").toDataURL("image/webp", 0.68);
+        else if(q.type === "file" && pendingFileAnswer) val = pendingFileAnswer;
         else return null;
         if(!allowEmpty && !val) return null;
         return {
@@ -1433,6 +1471,7 @@
     async function renderQuestion() {
         stopActiveMedia();
         const q = activeQueue[gameIdx];
+        pendingFileAnswer = null;
         if(!q) { finishGame(); return; }
 
         $("q-title").innerText = q.q;
@@ -1477,6 +1516,17 @@
                     <button id="btn-start-rec" onclick="startAudioRec()" class="gold">🎙️ بدء التسجيل</button>
                     <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none;" class="danger">🛑 إيقاف وحفظ</button>
                     <div id="audio-preview-container" style="display:none; margin-top:10px;"><audio id="audio-preview" controls></audio></div>
+                </div>`;
+            $("btn-next-q").style.display = "none";
+        } else if(q.type === "file") {
+            container.innerHTML = `
+                <div class="file-upload-box">
+                    <h3>🖼️ ارفع صورة أو ملف من جهازك</h3>
+                    <p class="hint">يدعم الصور من الألبوم وملفات PDF و Word و TXT. سيتم حفظه في السحابة وظهوره داخل النتائج.</p>
+                    <input type="file" id="file-answer-input" accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar" onchange="handleFileAnswer()">
+                    <div id="file-answer-preview" class="file-preview-card" style="display:none;"></div>
+                    <p id="file-answer-status" class="hint"></p>
+                    <button id="btn-submit-file" onclick="submitFileAnswer()" class="gold" disabled>اعتماد الملف واكمل ➔</button>
                 </div>`;
             $("btn-next-q").style.display = "none";
         }
@@ -1547,6 +1597,79 @@
             $("btn-stop-rec").style.display = "none";
             $("rec-status").innerText = "تم التسجيل ✅";
         }
+    };
+
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("تعذر قراءة الملف"));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function formatFileSize(bytes = 0) {
+        if(bytes < 1024) return `${bytes} B`;
+        if(bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    function fileExtFromName(name = "") {
+        const clean = String(name).split("?")[0].split("#")[0];
+        const ext = clean.includes(".") ? clean.split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "") : "bin";
+        return ext || "bin";
+    }
+
+    window.handleFileAnswer = async () => {
+        const input = $("file-answer-input");
+        const preview = $("file-answer-preview");
+        const status = $("file-answer-status");
+        const btn = $("btn-submit-file");
+        pendingFileAnswer = null;
+        if(btn) btn.disabled = true;
+        if(!input || !input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const maxBytes = 10 * 1024 * 1024;
+        if(file.size > maxBytes) {
+            if(status) status.innerText = "حجم الملف كبير. الحد الحالي 10MB حتى لا يعلق الحفظ.";
+            input.value = "";
+            return;
+        }
+        try {
+            if(status) status.innerText = "جارٍ تجهيز الملف...";
+            let dataUrl = await readFileAsDataURL(file);
+            const isImage = String(file.type || "").startsWith("image/") || String(dataUrl).startsWith("data:image");
+            if(isImage) dataUrl = await compressImageDataUrl(dataUrl, 1100, 0.72);
+            pendingFileAnswer = {
+                kind: "pending-file",
+                fileName: file.name || "ملف مرفق",
+                mime: file.type || "application/octet-stream",
+                ext: fileExtFromName(file.name),
+                sizeKB: Math.round(file.size / 1024),
+                dataUrl
+            };
+            if(preview) {
+                preview.style.display = "block";
+                preview.innerHTML = isImage
+                    ? `<img src="${dataUrl}" alt="preview"><p class="hint"><b>${esc(file.name)}</b><br>${formatFileSize(file.size)}</p>`
+                    : `<p>📎 <b>${esc(file.name)}</b></p><p class="hint">${esc(file.type || "ملف")} — ${formatFileSize(file.size)}</p>`;
+            }
+            if(status) status.innerText = "تم تجهيز الملف. اضغط اعتماد الملف واكمل.";
+            if(btn) btn.disabled = false;
+        } catch(e) {
+            console.error(e);
+            if(status) status.innerText = "تعذر قراءة الملف. جرّب ملفاً آخر.";
+        }
+    };
+
+    window.submitFileAnswer = async () => {
+        if(!pendingFileAnswer) return alert("اختر ملفاً أو صورة أولاً");
+        const status = $("file-answer-status");
+        const btn = $("btn-submit-file");
+        if(btn) btn.disabled = true;
+        if(status) status.innerText = "جارٍ حفظ الملف في السحابة...";
+        const savedAnswer = await safeMediaAnswer(pendingFileAnswer);
+        await saveAndNext(savedAnswer);
     };
 
     window.saveAndNext = async (val) => {
@@ -1801,6 +1924,36 @@
     }
 
     async function safeMediaAnswer(answer) {
+        if(answer && typeof answer === "object" && answer.kind === "pending-file" && answer.dataUrl) {
+            const rawFile = String(answer.dataUrl || "");
+            const isImage = rawFile.startsWith("data:image");
+            const ext = isImage ? "webp" : (answer.ext || fileExtFromName(answer.fileName || "file"));
+            const folder = isImage ? "mystery-game-uploaded-images" : "mystery-game-files";
+            const finalData = isImage ? await makeSmallImageDataUrl(rawFile) : rawFile;
+            try {
+                const url = await withTimeout(uploadDataUrlToStorage(finalData, folder, ext), isImage ? 15000 : 22000, "انتهت مهلة رفع الملف");
+                return {
+                    kind: isImage ? "image" : "file",
+                    url,
+                    fileName: answer.fileName || "ملف مرفق",
+                    mime: answer.mime || "application/octet-stream",
+                    savedIn: "storage",
+                    source: "album-upload",
+                    sizeKB: dataUrlSizeKB(finalData)
+                };
+            } catch(e) {
+                console.warn("File storage upload failed, using Firestore fallback when possible", e);
+                const kb = dataUrlSizeKB(finalData);
+                if(isImage && kb <= 850) {
+                    return { kind: "image-data", dataUrl: finalData, fileName: answer.fileName || "صورة", mime: answer.mime || "image/webp", savedIn: "firestore-fallback", source: "album-upload", sizeKB: kb, uploadError: shortError(e) };
+                }
+                if(!isImage && kb <= 650) {
+                    return { kind: "file-data", dataUrl: finalData, fileName: answer.fileName || "ملف مرفق", mime: answer.mime || "application/octet-stream", savedIn: "firestore-fallback", source: "album-upload", sizeKB: kb, uploadError: shortError(e) };
+                }
+                return { kind: "upload-error", mediaType: isImage ? "image" : "file", fileName: answer.fileName || "ملف", text: "تعذر رفع الملف وتعذر حفظه داخل Firestore لأن حجمه كبير. فعّل Firebase Storage Rules أو ارفع ملفاً أصغر.", uploadError: shortError(e) };
+            }
+        }
+
         const raw = String(answer || "");
         if(raw.startsWith("data:image")) {
             const small = await makeSmallImageDataUrl(raw);
@@ -1852,6 +2005,7 @@
         if(answer && typeof answer === "object") {
             if(answer.kind === "image-data") return { kind: "upload-error", mediaType: "image", text: "تم حفظ النتيجة، لكن تم حذف الصورة من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصور كرابط." };
             if(answer.kind === "audio-data") return { kind: "upload-error", mediaType: "audio", text: "تم حفظ النتيجة، لكن تم حذف الصوت من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصوت كرابط." };
+            if(answer.kind === "file-data") return { kind: "upload-error", mediaType: "file", text: "تم حفظ النتيجة، لكن تم حذف الملف من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الملفات كرابط." };
         }
         return answer;
     }
@@ -2037,7 +2191,7 @@
     }
 
     function typeLabel(type) {
-        return ({ text: "نصي", options: "اختيارات", camera: "كاميرا 📸", draw: "توقيع ✍️", audio: "تسجيل صوتي 🎤", coupleText: "كبلز نصي" })[type] || type;
+        return ({ text: "نصي", options: "اختيارات", camera: "كاميرا 📸", draw: "توقيع ✍️", audio: "تسجيل صوتي 🎤", file: "رفع ملف / صورة 🖼️", coupleText: "كبلز نصي" })[type] || type;
     }
 
     window.renderChallengeEditor = () => {
@@ -2056,7 +2210,7 @@
                     <span class="admin-badge">تحدي ${i + 1} من 3</span>
                     <input type="text" id="edit-ch-q-${idx}-${i}" value="${esc(ch.q)}" placeholder="نص التحدي">
                     <select id="edit-ch-type-${idx}-${i}" onchange="toggleChallengeOpts(${idx}, ${i})">
-                        ${["text", "options", "camera", "draw", "audio"].map(t => `<option value="${t}" ${ch.type === t ? "selected" : ""}>${typeLabel(t)}</option>`).join("")}
+                        ${["text", "options", "camera", "draw", "audio", "file"].map(t => `<option value="${t}" ${ch.type === t ? "selected" : ""}>${typeLabel(t)}</option>`).join("")}
                     </select>
                     <input type="text" id="edit-ch-opts-${idx}-${i}" value="${esc((ch.opts || []).join(","))}" placeholder="خيارات مفصولة بفاصلة ," style="display:${ch.type === "options" ? "block" : "none"};">
                     <div class="row-controls">
@@ -2435,6 +2589,7 @@
                 </div>
             `;
         }).join("");
+        restoreReviewScrollIfNeeded();
     };
 
     window.approveNextLevelForPlayer = (user) => {
@@ -2453,6 +2608,34 @@
             syncAndSave();
         }
     };
+
+    function safeDomId(value = "") {
+        return String(value).replace(/[^a-zA-Z0-9_-]/g, "_");
+    }
+
+    function captureReviewScroll(docId) {
+        const panel = $("screen-admin-main");
+        reviewScrollRestore = {
+            docId,
+            top: panel ? panel.scrollTop : window.scrollY,
+            focusId: document.activeElement && document.activeElement.id ? document.activeElement.id : ""
+        };
+        activeReviewDocId = docId;
+    }
+
+    function restoreReviewScrollIfNeeded() {
+        const restore = reviewScrollRestore;
+        if(!restore) return;
+        requestAnimationFrame(() => {
+            const panel = $("screen-admin-main");
+            if(panel) panel.scrollTop = restore.top;
+            else window.scrollTo(0, restore.top);
+            if(restore.focusId && $(restore.focusId)) {
+                try { $(restore.focusId).focus({ preventScroll: true }); } catch(e) {}
+            }
+            reviewScrollRestore = null;
+        });
+    }
 
     window.renderResults = () => {
         if(!$("list-results")) return;
@@ -2477,7 +2660,7 @@
                         <span class="pill status-review">النسبة: ${s.percent}%</span>
                         <span class="pill status-pending">المتبقي للتصحيح: ${s.pending}</span>
                     </div>
-                    <details ${idx === 0 ? "open" : ""}>
+                    <details id="result-details-${safeDomId(r.docId)}" ${(activeReviewDocId === r.docId || (!activeReviewDocId && idx === 0)) ? "open" : ""}>
                         <summary style="cursor:pointer; font-weight:bold; color:var(--primary-red);">عرض الإجابات وتصحيحها</summary>
                         ${data.map((d, answerIndex) => `
                             <div class="review-panel">
@@ -2534,6 +2717,7 @@
     window.setAnswerReview = async (docId, answerIndex, status) => {
         const result = results.find(r => r.docId === docId);
         if(!result) return alert("لم يتم العثور على النتيجة");
+        captureReviewScroll(docId);
         const data = normalizeResultData(result);
         if(!data[answerIndex]) return alert("لم يتم العثور على الإجابة");
         const maxPoints = Number(data[answerIndex].maxPoints || 1);
@@ -2564,6 +2748,7 @@
                 reviewedBy: currentAdmin ? currentAdmin.u : "admin",
                 reviewedAt: new Date().toISOString()
             });
+            Object.assign(result, updated, { reviewStatus });
             setSaveState("تم حفظ التصحيح ✅");
         } catch(e) {
             console.error(e);
@@ -2572,6 +2757,7 @@
     };
 
     window.finalizeResultReview = async (docId, passed) => {
+        captureReviewScroll(docId);
         const result = results.find(r => r.docId === docId);
         if(!result) return alert("لم يتم العثور على النتيجة");
         const data = normalizeResultData(result);
@@ -2649,6 +2835,15 @@
             if(answer.kind === "audio-data") {
                 return `<div><audio controls src="${answer.dataUrl}"></audio><p class="hint">محفوظ داخل Firestore كنسخة احتياطية ✅</p></div>`;
             }
+            if(answer.kind === "file") {
+                return `<div><a class="file-link" href="${esc(answer.url)}" target="_blank" rel="noopener" download>📎 فتح / تحميل الملف: ${esc(answer.fileName || "ملف مرفق")}</a><p class="hint">محفوظ في السحابة كرابط Storage ✅</p></div>`;
+            }
+            if(answer.kind === "file-data") {
+                return `<div><a class="file-link" href="${answer.dataUrl}" download="${esc(answer.fileName || "file")}">📎 تحميل الملف: ${esc(answer.fileName || "ملف مرفق")}</a><p class="hint">محفوظ داخل Firestore كنسخة احتياطية ✅</p></div>`;
+            }
+            if(answer.kind === "draft-file") {
+                return `<p class="hint">📎 ${esc(answer.fileName || "ملف")} — ${esc(answer.text || "تم حفظ مكان الملف، وقد يحتاج اللاعب إعادة رفعه.")}</p>`;
+            }
             if(answer.kind === "upload-error") {
                 return `<p class="hint" style="color:#7a0712;"><b>تنبيه الوسائط:</b> ${esc(answer.text || "تعذر حفظ الوسائط")} ${answer.uploadError ? `<br>السبب: ${esc(answer.uploadError)}` : ""}</p>`;
             }
@@ -2656,6 +2851,7 @@
         const a = String(answer || "");
         if(a.startsWith("data:image")) return `<img src="${a}" class="answer-media" alt="answer image">`;
         if(a.startsWith("data:audio")) return `<audio controls src="${a}"></audio>`;
+        if(a.startsWith("data:")) return `<a class="file-link" href="${a}" download>📎 تحميل الملف المرفق</a>`;
         return `<p style="white-space:pre-wrap; margin:0;">${esc(a)}</p>`;
     }
 
