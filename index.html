@@ -310,6 +310,26 @@
             margin-top: 12px;
         }
         .file-preview-card img { max-width: 220px; max-height: 220px; border-radius: 12px; border: 1px solid var(--line); }
+        .file-preview-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .file-mini-card {
+            background: rgba(255,255,255,0.94);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .file-mini-card img { width: 100%; max-height: 180px; object-fit: contain; border-radius: 10px; border: 1px solid var(--line); }
+        .file-answer-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
         .file-link {
             display: inline-block;
             padding: 10px 14px;
@@ -1045,6 +1065,12 @@
             if(kb > 850) {
                 copy.answer = { kind: "draft-file", fileName: answer.fileName || "ملف", text: "تم حفظ مكان إجابة ملف. إذا خرجت قبل التسليم قد تحتاج إعادة رفع الملف لأنه كبير." };
             }
+        } else if(answer && typeof answer === "object" && answer.kind === "pending-files") {
+            copy.answer = {
+                kind: "draft-files",
+                count: Array.isArray(answer.files) ? answer.files.length : 0,
+                text: "تم حفظ مكان إجابة فيها عدة ملفات. إذا خرجت قبل التسليم قد تحتاج إعادة رفع الملفات الكبيرة."
+            };
         }
         return copy;
     }
@@ -1567,12 +1593,12 @@
         } else if(q.type === "file") {
             container.innerHTML = `
                 <div class="file-upload-box">
-                    <h3>🖼️ ارفع صورة أو ملف من جهازك</h3>
-                    <p class="hint">يدعم الصور من الألبوم وملفات PDF و Word و TXT. سيتم حفظه في السحابة وظهوره داخل النتائج.</p>
-                    <input type="file" id="file-answer-input" accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar" onchange="handleFileAnswer()">
+                    <h3>🖼️ ارفع صورة أو أكثر / ملفات من جهازك</h3>
+                    <p class="hint">يقدر اللاعب يختار أكثر من صورة أو ملف مرة وحدة. جميعها تحفظ في السحابة وتظهر كاملة داخل النتائج.</p>
+                    <input type="file" id="file-answer-input" accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar" multiple onchange="handleFileAnswer()">
                     <div id="file-answer-preview" class="file-preview-card" style="display:none;"></div>
                     <p id="file-answer-status" class="hint"></p>
-                    <button id="btn-submit-file" onclick="submitFileAnswer()" class="gold" disabled>اعتماد الملف واكمل ➔</button>
+                    <button id="btn-submit-file" onclick="submitFileAnswer()" class="gold" disabled>اعتماد الملفات واكمل ➔</button>
                 </div>`;
             $("btn-next-q").style.display = "none";
         }
@@ -1673,47 +1699,72 @@
         const btn = $("btn-submit-file");
         pendingFileAnswer = null;
         if(btn) btn.disabled = true;
-        if(!input || !input.files || !input.files[0]) return;
-        const file = input.files[0];
-        const maxBytes = 10 * 1024 * 1024;
-        if(file.size > maxBytes) {
-            if(status) status.innerText = "حجم الملف كبير. الحد الحالي 10MB حتى لا يعلق الحفظ.";
+        if(!input || !input.files || !input.files.length) return;
+
+        const files = Array.from(input.files);
+        const maxSingleBytes = 10 * 1024 * 1024;
+        const maxTotalBytes = 35 * 1024 * 1024;
+        const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+
+        if(files.some(file => file.size > maxSingleBytes)) {
+            if(status) status.innerText = "فيه ملف حجمه كبير. الحد لكل ملف 10MB حتى لا يعلق الحفظ.";
             input.value = "";
             return;
         }
+        if(totalBytes > maxTotalBytes) {
+            if(status) status.innerText = "إجمالي الملفات كبير. الحد الحالي 35MB لكل إجابة حتى يبقى الحفظ سريع.";
+            input.value = "";
+            return;
+        }
+
         try {
-            if(status) status.innerText = "جارٍ تجهيز الملف...";
-            let dataUrl = await readFileAsDataURL(file);
-            const isImage = String(file.type || "").startsWith("image/") || String(dataUrl).startsWith("data:image");
-            if(isImage) dataUrl = await compressImageDataUrl(dataUrl, 1100, 0.72);
-            pendingFileAnswer = {
-                kind: "pending-file",
-                fileName: file.name || "ملف مرفق",
-                mime: file.type || "application/octet-stream",
-                ext: fileExtFromName(file.name),
-                sizeKB: Math.round(file.size / 1024),
-                dataUrl
+            if(status) status.innerText = `جارٍ تجهيز ${files.length} ملف...`;
+            const preparedFiles = [];
+            let previewHtml = `<div class="file-preview-list">`;
+
+            for(const file of files) {
+                let dataUrl = await readFileAsDataURL(file);
+                const isImage = String(file.type || "").startsWith("image/") || String(dataUrl).startsWith("data:image");
+                if(isImage) dataUrl = await compressImageDataUrl(dataUrl, 1100, 0.72);
+                const item = {
+                    kind: "pending-file",
+                    fileName: file.name || "ملف مرفق",
+                    mime: file.type || "application/octet-stream",
+                    ext: fileExtFromName(file.name),
+                    sizeKB: Math.round(file.size / 1024),
+                    dataUrl
+                };
+                preparedFiles.push(item);
+                previewHtml += isImage
+                    ? `<div class="file-mini-card"><img src="${dataUrl}" alt="preview"><p class="hint"><b>${esc(file.name)}</b><br>${formatFileSize(file.size)}</p></div>`
+                    : `<div class="file-mini-card"><p style="font-size:2rem; margin:0;">📎</p><p><b>${esc(file.name)}</b></p><p class="hint">${esc(file.type || "ملف")} — ${formatFileSize(file.size)}</p></div>`;
+            }
+
+            previewHtml += `</div>`;
+            pendingFileAnswer = preparedFiles.length === 1 ? preparedFiles[0] : {
+                kind: "pending-files",
+                files: preparedFiles,
+                count: preparedFiles.length
             };
             if(preview) {
                 preview.style.display = "block";
-                preview.innerHTML = isImage
-                    ? `<img src="${dataUrl}" alt="preview"><p class="hint"><b>${esc(file.name)}</b><br>${formatFileSize(file.size)}</p>`
-                    : `<p>📎 <b>${esc(file.name)}</b></p><p class="hint">${esc(file.type || "ملف")} — ${formatFileSize(file.size)}</p>`;
+                preview.innerHTML = `<b>تم اختيار ${preparedFiles.length} ملف</b>${previewHtml}`;
             }
-            if(status) status.innerText = "تم تجهيز الملف. اضغط اعتماد الملف واكمل.";
+            if(status) status.innerText = "تم تجهيز الملفات. اضغط اعتماد الملفات واكمل.";
             if(btn) btn.disabled = false;
         } catch(e) {
             console.error(e);
-            if(status) status.innerText = "تعذر قراءة الملف. جرّب ملفاً آخر.";
+            if(status) status.innerText = "تعذر قراءة أحد الملفات. جرّب ملفات أخرى.";
         }
     };
 
     window.submitFileAnswer = async () => {
-        if(!pendingFileAnswer) return alert("اختر ملفاً أو صورة أولاً");
+        if(!pendingFileAnswer) return alert("اختر صورة أو ملفاً واحداً على الأقل");
         const status = $("file-answer-status");
         const btn = $("btn-submit-file");
         if(btn) btn.disabled = true;
-        if(status) status.innerText = "جارٍ حفظ الملف في السحابة...";
+        const count = pendingFileAnswer.kind === "pending-files" ? pendingFileAnswer.files.length : 1;
+        if(status) status.innerText = `جارٍ حفظ ${count} ملف في السحابة...`;
         const savedAnswer = await safeMediaAnswer(pendingFileAnswer);
         await saveAndNext(savedAnswer);
     };
@@ -1970,6 +2021,20 @@
     }
 
     async function safeMediaAnswer(answer) {
+        if(answer && typeof answer === "object" && answer.kind === "pending-files" && Array.isArray(answer.files)) {
+            const items = [];
+            for(const fileAnswer of answer.files) {
+                items.push(await safeMediaAnswer(fileAnswer));
+            }
+            return {
+                kind: "files",
+                items,
+                count: items.length,
+                savedIn: items.every(x => x && x.savedIn === "storage") ? "storage" : "mixed",
+                source: "album-upload-multiple"
+            };
+        }
+
         if(answer && typeof answer === "object" && answer.kind === "pending-file" && answer.dataUrl) {
             const rawFile = String(answer.dataUrl || "");
             const isImage = rawFile.startsWith("data:image");
@@ -2038,6 +2103,9 @@
         for(const item of list) {
             const copy = { ...item };
             if(copy.answer && typeof copy.answer === "object") {
+                if(copy.answer.kind === "pending-file" || copy.answer.kind === "pending-files") {
+                    copy.answer = await safeMediaAnswer(copy.answer);
+                }
                 prepared.push(copy);
                 continue;
             }
@@ -2052,6 +2120,9 @@
             if(answer.kind === "image-data") return { kind: "upload-error", mediaType: "image", text: "تم حفظ النتيجة، لكن تم حذف الصورة من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصور كرابط." };
             if(answer.kind === "audio-data") return { kind: "upload-error", mediaType: "audio", text: "تم حفظ النتيجة، لكن تم حذف الصوت من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الصوت كرابط." };
             if(answer.kind === "file-data") return { kind: "upload-error", mediaType: "file", text: "تم حفظ النتيجة، لكن تم حذف الملف من النسخة الطارئة لأن حجم المستند كبير. فعّل Storage حتى تحفظ الملفات كرابط." };
+            if(answer.kind === "files" && Array.isArray(answer.items)) {
+                return { ...answer, items: answer.items.map(stripHeavyMediaAnswer) };
+            }
         }
         return answer;
     }
@@ -2906,6 +2977,9 @@
 
     function renderAnswer(answer = "") {
         if(answer && typeof answer === "object") {
+            if(answer.kind === "files" && Array.isArray(answer.items)) {
+                return `<div><b>📚 الملفات المرفوعة: ${answer.items.length}</b><div class="file-answer-gallery">${answer.items.map(renderAnswer).join("")}</div></div>`;
+            }
             if(answer.kind === "image") {
                 return `<div><img src="${esc(answer.url)}" class="answer-media" alt="answer image"><p class="hint">محفوظة في السحابة كرابط Storage ✅</p></div>`;
             }
@@ -2926,6 +3000,9 @@
             }
             if(answer.kind === "draft-file") {
                 return `<p class="hint">📎 ${esc(answer.fileName || "ملف")} — ${esc(answer.text || "تم حفظ مكان الملف، وقد يحتاج اللاعب إعادة رفعه.")}</p>`;
+            }
+            if(answer.kind === "draft-files") {
+                return `<p class="hint">📚 ${esc(answer.count || 0)} ملفات — ${esc(answer.text || "تم حفظ مكان الملفات، وقد يحتاج اللاعب إعادة رفعها.")}</p>`;
             }
             if(answer.kind === "upload-error") {
                 return `<p class="hint" style="color:#7a0712;"><b>تنبيه الوسائط:</b> ${esc(answer.text || "تعذر حفظ الوسائط")} ${answer.uploadError ? `<br>السبب: ${esc(answer.uploadError)}` : ""}</p>`;
