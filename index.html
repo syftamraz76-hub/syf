@@ -459,6 +459,43 @@
         .result-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 10px 0; }
         .answer-media { max-width: 220px; border-radius: 10px; border: 1px solid var(--line); }
 
+        .loss-card {
+            background:
+                radial-gradient(circle at top right, rgba(181,18,34,0.18), transparent 38%),
+                linear-gradient(135deg, rgba(255,255,255,0.98), rgba(212,175,55,0.13));
+            border: 1px solid rgba(181,18,34,0.28);
+            border-radius: 22px;
+            padding: 18px;
+            margin: 14px auto;
+            text-align: right;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+        }
+        .loss-requirements {
+            display: grid;
+            gap: 10px;
+            margin: 12px 0;
+            padding: 0;
+            list-style: none;
+        }
+        .loss-requirements li {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(139,0,0,0.18);
+            border-radius: 14px;
+            padding: 12px 14px;
+            line-height: 1.8;
+        }
+        .loss-requirements li::before {
+            content: "🕯️";
+            margin-left: 8px;
+        }
+        .loss-note-box {
+            background: rgba(181,18,34,0.08);
+            border: 1px dashed rgba(181,18,34,0.32);
+            border-radius: 14px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
         .save-state {
             position: fixed;
             top: 12px;
@@ -586,6 +623,21 @@
             <p>تم حفظ إجاباتك سحابياً، والباب التالي يبقى مغلقاً حتى تصحح الإدارة كل سؤال وتعلن اجتياز المستوى.</p>
             <button onclick="showLevelMap()">العودة للمستويات</button>
             <button class="secondary" onclick="location.reload()">خروج</button>
+        </div>
+    </div>
+
+    <div id="screen-loss" class="screen">
+        <div class="hero-card loss-card">
+            <span class="pill status-rejected">⛔ قائمة الخسارة</span>
+            <h1 id="loss-title">لم يتم الاجتياز</h1>
+            <p id="loss-message">ظهرت لك قائمة الخسارة من الإدارة.</p>
+            <div id="loss-score-board" class="gate-line"></div>
+            <div class="loss-note-box">
+                <h3 id="loss-mystery-name">متطلبات الشخص الغامض</h3>
+                <ul id="loss-requirements" class="loss-requirements"></ul>
+                <p id="loss-admin-note" class="hint"></p>
+            </div>
+            <div id="loss-actions" class="row-controls" style="margin-top:14px; justify-content:center;"></div>
         </div>
     </div>
 
@@ -721,6 +773,33 @@
             <div id="list-results"></div>
         </div>
 
+        <div id="tab-loss" class="tab-pane">
+            <div class="admin-section">
+                <h3>⛔ إدارة الخسارة</h3>
+                <p class="hint">تحكم هنا في القائمة التي تظهر للاعب عند عدم الاجتياز. المتطلبات تتحدث فوراً وتظهر للاعب عند تسجيل الدخول أو عند تصحيح نتيجته كخسارة.</p>
+                <div class="perm-grid">
+                    <label><input type="checkbox" id="loss-enabled"> تفعيل قائمة الخسارة</label>
+                    <label><input type="checkbox" id="loss-auto-open"> فتحها تلقائياً بعد تسجيل الدخول</label>
+                    <label><input type="checkbox" id="loss-show-score"> إظهار الدرجة والنسبة</label>
+                    <label><input type="checkbox" id="loss-allow-retry"> إظهار زر إعادة المحاولة</label>
+                    <label><input type="checkbox" id="loss-keep-approval"> السماح بإعادة المحاولة بدون تصريح جديد</label>
+                </div>
+                <input type="text" id="loss-title-input" placeholder="عنوان شاشة الخسارة">
+                <input type="text" id="loss-mystery-input" placeholder="اسم صاحب المتطلبات - مثال: الشخص الغامض">
+                <textarea id="loss-message-input" placeholder="رسالة تظهر للاعب بعد الخسارة"></textarea>
+                <textarea id="loss-requirements-input" style="min-height:180px;" placeholder="متطلبات الشخص الغامض - كل مطلب في سطر"></textarea>
+                <div class="grid grid-2">
+                    <button onclick="saveLossConfig()" class="gold">حفظ إعدادات الخسارة للجميع</button>
+                    <button onclick="applyLossConfigToActiveLosses()" class="blue">تحديث القوائم المفتوحة الآن</button>
+                </div>
+            </div>
+            <div class="admin-section">
+                <h3>📋 الخسارات الحالية</h3>
+                <p class="hint">تقدر تفتح أو تغلق قائمة الخسارة لأي لاعب، وتكتب ملاحظة خاصة تظهر له تحت المتطلبات.</p>
+            </div>
+            <div id="list-loss-management"></div>
+        </div>
+
         <div id="tab-admins" class="tab-pane">
             <div class="admin-section">
                 <h3>🛡️ مصفوفة الصلاحيات وحماية الرتب</h3>
@@ -736,6 +815,7 @@
                     <label><input type="checkbox" class="p-sub" value="questions"> التحديات والأسئلة</label>
                     <label><input type="checkbox" class="p-sub" value="progress"> التقدم</label>
                     <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
+                    <label><input type="checkbox" class="p-sub" value="loss"> الخسارة</label>
                     <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
                 </div>
                 <button onclick="createNewAdmin()" class="gold full">إضافة مسؤول جديد</button>
@@ -826,6 +906,7 @@
         questions: "التحديات والأسئلة",
         progress: "تقدم اللاعبين",
         results: "النتائج",
+        loss: "إدارة الخسارة",
         admins: "الرتب"
     };
 
@@ -838,6 +919,7 @@
         { id: "couples", label: "💞 الكبلز", perm: "questions" },
         { id: "progress", label: "🧭 التقدم", perm: "progress" },
         { id: "results", label: "📥 النتائج", perm: "results" },
+        { id: "loss", label: "⛔ الخسارة", perm: "loss" },
         { id: "admins", label: "🛡️ الرتب", perm: "admins" }
     ];
 
@@ -884,6 +966,40 @@
         });
     }
 
+    function defaultLossConfig() {
+        return {
+            enabled: true,
+            autoOpenOnLogin: true,
+            showScore: true,
+            allowRetryButton: true,
+            keepApprovalAfterFail: true,
+            title: "لم يتم الاجتياز هذه المرة",
+            mysteryName: "متطلبات الشخص الغامض",
+            message: "تم فتح قائمة الخسارة لك. نفّذ المتطلبات التالية ثم أعد المحاولة عندما تكون جاهزاً.",
+            requirements: [
+                "راجع ملاحظات الإدارة على إجاباتك.",
+                "جهّز المطلوب من الشخص الغامض قبل إعادة المحاولة.",
+                "اضغط إعادة المحاولة إذا كان الباب ما زال مصرحاً لك."
+            ]
+        };
+    }
+
+    function normalizeLossConfig(input = {}) {
+        const base = defaultLossConfig();
+        const merged = { ...base, ...(input || {}) };
+        merged.enabled = merged.enabled !== false;
+        merged.autoOpenOnLogin = merged.autoOpenOnLogin !== false;
+        merged.showScore = merged.showScore !== false;
+        merged.allowRetryButton = merged.allowRetryButton !== false;
+        merged.keepApprovalAfterFail = merged.keepApprovalAfterFail !== false;
+        merged.title = String(merged.title || base.title).trim();
+        merged.mysteryName = String(merged.mysteryName || base.mysteryName).trim();
+        merged.message = String(merged.message || base.message).trim();
+        merged.requirements = Array.isArray(merged.requirements) ? merged.requirements.map(x => String(x).trim()).filter(Boolean) : base.requirements;
+        if(!merged.requirements.length) merged.requirements = base.requirements;
+        return merged;
+    }
+
     function defaultState() {
         return {
             config: {
@@ -895,10 +1011,11 @@
                 rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "كل مستوى لا يفتح إلا بتصريح الإدارة", "احترم الطرف الآخر في كل إجابة"],
                 primaryColor: "#8B0000"
             },
-            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "admins"]}],
+            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "loss", "admins"]}],
             players: [{u: "sahm", p: "1 2 3"}],
             levels: defaultLevels(),
             accessRequests: [],
+            lossConfig: defaultLossConfig(),
             progress: {}
         };
     }
@@ -914,6 +1031,7 @@
             players: Array.isArray(old.players) && old.players.length ? old.players : base.players,
             levels: Array.isArray(old.levels) && old.levels.length ? old.levels : base.levels,
             accessRequests: Array.isArray(old.accessRequests) ? old.accessRequests : base.accessRequests,
+            lossConfig: {...base.lossConfig, ...(old.lossConfig || {})},
             progress: old.progress && typeof old.progress === "object" ? old.progress : base.progress
         };
 
@@ -921,6 +1039,7 @@
             const perms = Array.isArray(a.perms) ? [...new Set(a.perms)] : [];
             if(perms.includes("admins") && !perms.includes("approvals")) perms.push("approvals");
             if(perms.includes("admins") && !perms.includes("progress")) perms.push("progress");
+            if((perms.includes("admins") || perms.includes("results")) && !perms.includes("loss")) perms.push("loss");
             return { ...a, perms };
         });
 
@@ -946,6 +1065,13 @@
                 challenges,
                 coupleQuestions: coupleQs
             };
+        });
+        merged.lossConfig = normalizeLossConfig(merged.lossConfig);
+        Object.keys(merged.progress || {}).forEach(user => {
+            const prog = merged.progress[user];
+            if(prog && typeof prog === "object") {
+                if(!prog.losses || typeof prog.losses !== "object" || Array.isArray(prog.losses)) prog.losses = {};
+            }
         });
         return sanitizeBrandingInState(merged);
     }
@@ -1082,6 +1208,7 @@
             players: state.players,
             levels: state.levels,
             accessRequests: state.accessRequests,
+            lossConfig: normalizeLossConfig(state.lossConfig),
             progress: state.progress,
             updatedAt: new Date().toISOString()
         };
@@ -1434,6 +1561,7 @@
             $("start-title").innerText = state.config.title;
             $("start-desc").innerText = state.config.desc;
             $("rules-content").innerHTML = state.config.rules.map(r => `<li>${esc(r)}</li>`).join("");
+            if(showActiveLossIfNeeded({ fromLogin: true })) return;
             showScreen("screen-start");
         } else alert("خطأ في بيانات اللاعب");
     };
@@ -1471,6 +1599,7 @@
         const target = $(`tab-${tabId}`);
         if(target) target.classList.add("active-pane");
         if(tabId === "results") renderResults();
+        if(tabId === "loss") renderLossManager();
         if(tabId === "approvals") renderAccessRequests("pending");
         if(tabId === "couples") renderCoupleEditor();
         if(tabId === "challenges") renderChallengeEditor();
@@ -1485,6 +1614,7 @@
         if(!Array.isArray(state.progress[user].approvedLevels)) state.progress[user].approvedLevels = [];
         if(!Array.isArray(state.progress[user].pendingReviewLevels)) state.progress[user].pendingReviewLevels = [];
         if(!state.progress[user].retryPlans || typeof state.progress[user].retryPlans !== "object" || Array.isArray(state.progress[user].retryPlans)) state.progress[user].retryPlans = {};
+        if(!state.progress[user].losses || typeof state.progress[user].losses !== "object" || Array.isArray(state.progress[user].losses)) state.progress[user].losses = {};
         return state.progress[user];
     }
 
@@ -1566,17 +1696,145 @@
             return;
         }
         const s = getResultScore(r);
+        const activeLoss = !r.passed ? getActiveLossRecord(currentUser, Number(r.level || 1) - 1) : null;
         $("player-review-banner").innerHTML = `
             <div class="hero-card player-congrats" style="text-align:right;">
-                <h3>${r.passed ? "🎉 تهانينا لقد تجاوزت المستوى بصورة كبيرة" : "🕯️ تم تصحيح المستوى"}</h3>
-                <p>${r.passed ? `تم اعتماد اجتيازك للمستوى ${esc(r.level)}: ${esc(r.levelTitle || "")}.` : `المستوى ${esc(r.level)} يحتاج إعادة محاولة بعد التصحيح.`}</p>
+                <h3>${r.passed ? "🎉 تهانينا لقد تجاوزت المستوى بصورة كبيرة" : "⛔ تم فتح قائمة الخسارة"}</h3>
+                <p>${r.passed ? `تم اعتماد اجتيازك للمستوى ${esc(r.level)}: ${esc(r.levelTitle || "")}.` : `المستوى ${esc(r.level)} يحتاج إعادة محاولة بعد التصحيح. راجع متطلبات الشخص الغامض قبل العودة.`}</p>
                 <div class="gate-line">
                     <span class="pill ${r.passed ? "status-approved" : "status-rejected"}">${r.passed ? "✅ مجتاز" : "⛔ غير مجتاز"}</span>
                     <span class="pill status-review">المجموع: ${s.earned} / ${s.max}</span>
                     <span class="pill status-review">النسبة: ${s.percent}%</span>
                 </div>
+                ${activeLoss ? `<button onclick="openLossMenu(${Number(r.level || 1) - 1})" class="danger small">عرض قائمة الخسارة والمتطلبات</button>` : ""}
             </div>
         `;
+    }
+
+    function lossConfig() {
+        state.lossConfig = normalizeLossConfig(state.lossConfig);
+        return state.lossConfig;
+    }
+
+    function activeLossRecordsForUser(user = currentUser) {
+        if(!user) return [];
+        const prog = getPlayerProgress(user);
+        return Object.entries(prog.losses || {})
+            .map(([level, rec]) => ({ level: Number(level), ...(rec || {}) }))
+            .filter(rec => rec.active !== false)
+            .sort((a, b) => String(b.createdAt || b.reviewedAt || "").localeCompare(String(a.createdAt || a.reviewedAt || "")));
+    }
+
+    function getActiveLossRecord(user = currentUser, levelIndex = null) {
+        const records = activeLossRecordsForUser(user);
+        if(levelIndex !== null && levelIndex !== undefined) {
+            const levelNo = Number(levelIndex) + 1;
+            return records.find(rec => Number(rec.level) === levelNo) || null;
+        }
+        return records[0] || null;
+    }
+
+    function failedResultForLossRecord(record, user = currentUser) {
+        if(!record) return null;
+        return results.find(r => r.docId && record.docId && r.docId === record.docId)
+            || results.filter(r => r.user === user && Number(r.level) === Number(record.level) && r.reviewStatus === "failed")
+                .sort((a, b) => String(b.reviewedAt || b.isoTime || "").localeCompare(String(a.reviewedAt || a.isoTime || "")))[0]
+            || null;
+    }
+
+    function buildLossRecordFromResult(result, note = "") {
+        const cfg = lossConfig();
+        const score = getResultScore(result || {});
+        return {
+            active: true,
+            user: result?.user || "",
+            level: Number(result?.level || 0),
+            levelTitle: result?.levelTitle || "",
+            docId: result?.docId || "",
+            note: note || "",
+            score: score.earned,
+            maxScore: score.max,
+            percent: score.percent,
+            createdAt: new Date().toISOString(),
+            createdBy: currentAdmin ? currentAdmin.u : "admin",
+            configVersion: cfg.title + "|" + cfg.message
+        };
+    }
+
+    function lossRequirementsHtml() {
+        const cfg = lossConfig();
+        return (cfg.requirements || []).map(req => `<li>${esc(req)}</li>`).join("") || `<li>راجع الإدارة لمعرفة المتطلبات.</li>`;
+    }
+
+    function renderLossScreen(record = null, result = null) {
+        const cfg = lossConfig();
+        const source = result || failedResultForLossRecord(record) || {};
+        const s = getResultScore(source && source.data ? source : { score: record?.score || 0, maxScore: record?.maxScore || 0, data: [] });
+        if($("loss-title")) $("loss-title").innerText = cfg.title || "لم يتم الاجتياز";
+        if($("loss-message")) $("loss-message").innerText = cfg.message || "ظهرت لك قائمة الخسارة من الإدارة.";
+        if($("loss-mystery-name")) $("loss-mystery-name").innerText = cfg.mysteryName || "متطلبات الشخص الغامض";
+        if($("loss-requirements")) $("loss-requirements").innerHTML = lossRequirementsHtml();
+        const levelNo = Number(record?.level || source.level || 0);
+        const levelTitle = record?.levelTitle || source.levelTitle || (state.levels[levelNo - 1]?.title || "");
+        if($("loss-score-board")) {
+            $("loss-score-board").innerHTML = cfg.showScore ? `
+                <span class="pill status-rejected">المستوى ${esc(levelNo || "")}: ${esc(levelTitle)}</span>
+                <span class="pill status-review">المجموع: ${s.earned || record?.score || 0} / ${s.max || record?.maxScore || 0}</span>
+                <span class="pill status-review">النسبة: ${s.percent || record?.percent || 0}%</span>
+            ` : `<span class="pill status-rejected">المستوى ${esc(levelNo || "")}: ${esc(levelTitle)}</span>`;
+        }
+        const adminNote = record?.note || collectReviewNotes(source);
+        if($("loss-admin-note")) $("loss-admin-note").innerHTML = adminNote ? `<b>ملاحظة الإدارة:</b> ${esc(adminNote)}` : "";
+        const canRetry = cfg.allowRetryButton && currentUser && levelNo && canStartLevel(currentUser, levelNo - 1);
+        if($("loss-actions")) {
+            $("loss-actions").innerHTML = `
+                ${canRetry ? `<button onclick="initGameSession('level-full', ${levelNo - 1})" class="gold">إعادة المحاولة الآن</button>` : ""}
+                <button onclick="showLevelMap()" class="secondary">العودة لخريطة المستويات</button>
+                <button onclick="location.reload()" class="danger">خروج</button>
+            `;
+        }
+        showScreen("screen-loss");
+    }
+
+    function collectReviewNotes(result = {}) {
+        const notes = normalizeResultData(result).map(d => d.review?.note || "").filter(Boolean);
+        return notes.join(" — ");
+    }
+
+    window.openLossMenu = (levelIndex = null) => {
+        const record = getActiveLossRecord(currentUser, levelIndex);
+        if(!record) {
+            alert("لا توجد قائمة خسارة مفعلة لك حالياً.");
+            return;
+        }
+        renderLossScreen(record, failedResultForLossRecord(record));
+    };
+
+    function showActiveLossIfNeeded(options = {}) {
+        const cfg = lossConfig();
+        if(!cfg.enabled || !currentUser) return false;
+        if(options.fromLogin && !cfg.autoOpenOnLogin) return false;
+        const record = getActiveLossRecord(currentUser);
+        if(!record) return false;
+        renderLossScreen(record, failedResultForLossRecord(record));
+        return true;
+    }
+
+    function activateLossForResult(result, note = "") {
+        if(!result || !result.user || !result.level) return null;
+        const prog = getPlayerProgress(result.user);
+        prog.losses = prog.losses && typeof prog.losses === "object" ? prog.losses : {};
+        const record = buildLossRecordFromResult(result, note);
+        prog.losses[String(result.level)] = record;
+        return record;
+    }
+
+    function clearLossForPlayer(user, levelNo) {
+        if(!user || !levelNo) return;
+        const prog = getPlayerProgress(user);
+        if(prog.losses && prog.losses[String(levelNo)]) {
+            prog.losses[String(levelNo)] = { ...prog.losses[String(levelNo)], active: false, clearedAt: new Date().toISOString(), clearedBy: currentAdmin ? currentAdmin.u : "admin" };
+        }
     }
 
     function renderLevelMap() {
@@ -1589,6 +1847,7 @@
             const latest = latestLevelRequest(currentUser, i);
             const pending = latest && latest.status === "pending";
             const rejected = latest && latest.status === "rejected";
+            const activeLoss = getActiveLossRecord(currentUser, i);
             let badge = "";
             let action = "";
             let lockedClass = "";
@@ -1607,6 +1866,9 @@
             } else if(pending) {
                 badge = `<span class="pill status-pending">⌛ بانتظار تصريح الإدارة</span>`;
                 action = `<button class="small" disabled>طلب التصريح تحت المراجعة</button>`;
+            } else if(activeLoss) {
+                badge = `<span class="pill status-rejected">⛔ خسارة مفعلة</span>`;
+                action = `<button class="danger small" onclick="openLossMenu(${i})">عرض قائمة الخسارة</button>${approved ? `<button class="gold small" onclick="initGameSession('level-full', ${i})">إعادة المحاولة</button>` : ""}`;
             } else if(approved) {
                 badge = `<span class="pill status-approved">🟢 مصرح بالدخول</span>`;
                 action = `<button class="gold small" onclick="initGameSession('level-full', ${i})">افتح الباب وابدأ</button>`;
@@ -2759,6 +3021,7 @@
         const pendingRequests = (state.accessRequests || []).filter(r => r.status === "pending").length;
         const pendingReviews = results.reduce((sum, r) => sum + getResultScore(r).pending, 0);
         const passedLevels = results.filter(r => r.reviewStatus === "passed").length;
+        const activeLosses = Object.values(state.progress || {}).reduce((sum, prog) => sum + Object.values((prog && prog.losses) || {}).filter(x => x && x.active !== false).length, 0);
         $("dashboard-stats").innerHTML = `
             <div class="stat-card"><span class="pill">🗺️</span><h2>${state.levels.length}</h2><b>مستويات</b></div>
             <div class="stat-card"><span class="pill">⚔️</span><h2>${totalChallenges}</h2><b>تحديات</b></div>
@@ -2767,10 +3030,139 @@
             <div class="stat-card"><span class="pill">🕯️</span><h2>${pendingRequests}</h2><b>طلبات تصريح</b></div>
             <div class="stat-card"><span class="pill">📝</span><h2>${pendingReviews}</h2><b>إجابات تنتظر التصحيح</b></div>
             <div class="stat-card"><span class="pill">🏆</span><h2>${passedLevels}</h2><b>مستويات مجتازة</b></div>
+            <div class="stat-card"><span class="pill">⛔</span><h2>${activeLosses}</h2><b>قوائم خسارة مفتوحة</b></div>
             <div class="stat-card"><span class="pill">📥</span><h2>${results.length}</h2><b>نتائج</b></div>
             <div class="stat-card"><span class="pill">🛡️</span><h2>${state.admins.length}</h2><b>مسؤولين</b></div>
         `;
     }
+
+    function renderLossFields() {
+        if(!$("loss-title-input")) return;
+        const cfg = lossConfig();
+        $("loss-enabled").checked = cfg.enabled !== false;
+        $("loss-auto-open").checked = cfg.autoOpenOnLogin !== false;
+        $("loss-show-score").checked = cfg.showScore !== false;
+        $("loss-allow-retry").checked = cfg.allowRetryButton !== false;
+        $("loss-keep-approval").checked = cfg.keepApprovalAfterFail !== false;
+        $("loss-title-input").value = cfg.title || "";
+        $("loss-mystery-input").value = cfg.mysteryName || "";
+        $("loss-message-input").value = cfg.message || "";
+        $("loss-requirements-input").value = (cfg.requirements || []).join("\n");
+    }
+
+    window.saveLossConfig = () => {
+        state.lossConfig = normalizeLossConfig({
+            enabled: $("loss-enabled")?.checked !== false,
+            autoOpenOnLogin: $("loss-auto-open")?.checked !== false,
+            showScore: $("loss-show-score")?.checked !== false,
+            allowRetryButton: $("loss-allow-retry")?.checked !== false,
+            keepApprovalAfterFail: $("loss-keep-approval")?.checked !== false,
+            title: $("loss-title-input")?.value?.trim() || defaultLossConfig().title,
+            mysteryName: $("loss-mystery-input")?.value?.trim() || defaultLossConfig().mysteryName,
+            message: $("loss-message-input")?.value?.trim() || defaultLossConfig().message,
+            requirements: ($("loss-requirements-input")?.value || "").split("\n").map(x => x.trim()).filter(Boolean)
+        });
+        syncAndSave();
+        alert("تم حفظ إعدادات الخسارة ومتطلبات الشخص الغامض للجميع.");
+    };
+
+    window.applyLossConfigToActiveLosses = () => {
+        Object.values(state.progress || {}).forEach(prog => {
+            Object.values((prog && prog.losses) || {}).forEach(rec => {
+                if(rec && rec.active !== false) rec.configUpdatedAt = new Date().toISOString();
+            });
+        });
+        syncAndSave();
+        alert("تم تحديث القوائم المفتوحة بنفس إعدادات الخسارة الحالية.");
+    };
+
+    window.renderLossManager = () => {
+        renderLossFields();
+        const box = $("list-loss-management");
+        if(!box) return;
+        const failedResults = results.filter(r => r.reviewStatus === "failed").sort((a, b) => String(b.reviewedAt || b.isoTime || "").localeCompare(String(a.reviewedAt || a.isoTime || "")));
+        if(!failedResults.length) {
+            box.innerHTML = `<div class="result-box"><h3>لا توجد خسارات حالياً</h3><p class="hint">أي نتيجة تعتمدها كـ عدم اجتياز ستظهر هنا مباشرة.</p></div>`;
+            return;
+        }
+        box.innerHTML = failedResults.map(r => {
+            const prog = getPlayerProgress(r.user);
+            const rec = prog.losses && prog.losses[String(r.level)] && prog.losses[String(r.level)].docId === r.docId ? prog.losses[String(r.level)] : null;
+            const active = rec && rec.active !== false;
+            const s = getResultScore(r);
+            const safeId = safeDomId(`${r.docId || r.user}-${r.level}`);
+            return `
+                <div class="result-box">
+                    <h3>⛔ ${esc(r.user || "لاعب")} — المستوى ${esc(r.level || "")}</h3>
+                    <p class="hint">${esc(r.levelTitle || "")} — ${esc(r.time || "")} — المجموع ${s.earned} / ${s.max} — النسبة ${s.percent}%</p>
+                    <div class="gate-line">
+                        <span class="pill ${active ? "status-rejected" : "status-locked"}">${active ? "قائمة الخسارة مفعلة" : "قائمة الخسارة مغلقة"}</span>
+                        <span class="pill status-review">المتطلبات الحالية: ${(lossConfig().requirements || []).length}</span>
+                    </div>
+                    <textarea id="loss-note-${safeId}" placeholder="ملاحظة خاصة لهذا اللاعب تظهر داخل قائمة الخسارة">${esc(rec?.note || collectReviewNotes(r) || "")}</textarea>
+                    <div class="row-controls">
+                        <button onclick="openLossForResult('${r.docId}', '${safeId}')" class="danger small">فتح / تحديث القائمة للاعب</button>
+                        <button onclick="closeLossForResult('${r.docId}')" class="secondary small">إغلاق القائمة</button>
+                        <button onclick="resetPlayerToFailedLevel('${encodeURIComponent(r.user || "")}', ${Number(r.level || 1)})" class="gold small">إرجاعه لهذا المستوى</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    };
+
+    window.openLossForResult = async (docId, safeId = "") => {
+        const result = results.find(r => r.docId === docId);
+        if(!result) return alert("لم يتم العثور على نتيجة الخسارة");
+        const note = safeId && $(`loss-note-${safeId}`) ? $(`loss-note-${safeId}`).value.trim() : collectReviewNotes(result);
+        activateLossForResult(result, note);
+        saveLocalOnly();
+        try {
+            await Promise.all([
+                saveProgressCloud({ silent: true }),
+                updateDoc(doc(db, RESULTS_COL, docId), { lossMenuActive: true, lossMenuUpdatedAt: new Date().toISOString(), lossMenuNote: note })
+            ]);
+            renderLossManager();
+            setSaveState("تم فتح قائمة الخسارة للاعب ✅");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر حفظ قائمة الخسارة في السحابة");
+        }
+    };
+
+    window.closeLossForResult = async (docId) => {
+        const result = results.find(r => r.docId === docId);
+        if(!result) return alert("لم يتم العثور على نتيجة الخسارة");
+        clearLossForPlayer(result.user, Number(result.level || 0));
+        saveLocalOnly();
+        try {
+            await Promise.all([
+                saveProgressCloud({ silent: true }),
+                updateDoc(doc(db, RESULTS_COL, docId), { lossMenuActive: false, lossMenuClosedAt: new Date().toISOString() })
+            ]);
+            renderLossManager();
+            setSaveState("تم إغلاق قائمة الخسارة ✅");
+        } catch(e) {
+            console.error(e);
+            alert("تعذر إغلاق قائمة الخسارة في السحابة");
+        }
+    };
+
+    window.resetPlayerToFailedLevel = async (userValue, levelNo) => {
+        const user = decodeActionUser(userValue);
+        const prog = getPlayerProgress(user);
+        levelNo = Number(levelNo || 1);
+        prog.retryPlans = prog.retryPlans && typeof prog.retryPlans === "object" ? prog.retryPlans : {};
+        Object.keys(prog.retryPlans).forEach(k => { if(Number(k) >= levelNo) delete prog.retryPlans[k]; });
+        prog.completedLevels = (prog.completedLevels || []).map(Number).filter(n => n < levelNo);
+        prog.approvedLevels = (prog.approvedLevels || []).map(Number).filter(n => n <= levelNo);
+        if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+        prog.pendingReviewLevels = (prog.pendingReviewLevels || []).map(Number).filter(n => n < levelNo);
+        prog.completedLevels.sort((a, b) => a - b);
+        prog.approvedLevels.sort((a, b) => a - b);
+        await saveProgressCloud({ silent: true });
+        refreshAdminLists();
+        setSaveState(`تم إرجاع ${user} للمستوى ${levelNo} مع بقاء قائمة الخسارة ✅`);
+    };
 
     function renderAppearanceFields() {
         if(!$("conf-logo")) return;
@@ -2787,6 +3179,7 @@
         const restore = adminUiRestore || captureAdminUiState();
         renderDashboard();
         renderAppearanceFields();
+        renderLossFields();
         fillLevelSelects();
         restoreAdminSelectorValues(restore);
 
@@ -2818,7 +3211,7 @@
                         <input type="text" id="edit-adm-p-${i}" value="${esc(a.p)}" placeholder="كلمة السر">
                     </div>
                     <div class="perm-grid">
-                        ${["ui", "players", "approvals", "questions", "progress", "results", "admins"].map(perm => `
+                        ${["ui", "players", "approvals", "questions", "progress", "results", "loss", "admins"].map(perm => `
                             <label><input type="checkbox" class="edit-adm-perm-${i}" value="${perm}" ${(a.perms || []).includes(perm) ? "checked" : ""}> ${permLabels[perm]}</label>
                         `).join("")}
                     </div>
@@ -2833,6 +3226,7 @@
         if($("list-challenges")) renderChallengeEditor();
         if($("couple-questions-editor")) renderCoupleEditor();
         if($("list-results")) renderResults();
+        if($("list-loss-management")) renderLossManager();
         restoreAdminUiState(restore);
     }
 
@@ -3088,10 +3482,11 @@
                         `).join("")}
                         <div class="review-panel">
                             <h3>اعتماد نتيجة المستوى</h3>
-                            <p class="hint">بعد تصحيح كل سؤال/تحدي، اعتمد النتيجة. إذا اخترت اجتاز، سيظهر للاعب: تهانينا لقد تجاوزت المستوى بصورة كبيرة، وسيفتح له طلب المستوى التالي.</p>
+                            <p class="hint">بعد تصحيح كل سؤال/تحدي، اعتمد النتيجة. إذا اخترت عدم الاجتياز، ستُفتح للاعب قائمة الخسارة ومتطلبات الشخص الغامض تلقائياً.</p>
                             <div class="row-controls">
                                 <button onclick="finalizeResultReview('${r.docId}', true)" class="gold">اعتماد الاجتياز وفتح التالي</button>
-                                <button onclick="finalizeResultReview('${r.docId}', false)" class="danger">عدم الاجتياز</button>
+                                <button onclick="finalizeResultReview('${r.docId}', false)" class="danger">عدم الاجتياز وفتح قائمة الخسارة</button>
+                                ${r.reviewStatus === "failed" ? `<button onclick="openLossForResult('${r.docId}')" class="blue">تحديث قائمة الخسارة</button>` : ""}
                             </div>
                         </div>
                     </details>
@@ -3177,7 +3572,16 @@
                 if(!prog.completedLevels.includes(levelNo)) prog.completedLevels.push(levelNo);
                 if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
                 if(prog.retryPlans && prog.retryPlans[String(levelNo)]) delete prog.retryPlans[String(levelNo)];
+                clearLossForPlayer(user, levelNo);
                 prog.completedLevels.sort((a, b) => a - b);
+                prog.approvedLevels.sort((a, b) => a - b);
+            } else {
+                if(lossConfig().enabled) activateLossForResult(temp, collectReviewNotes(temp));
+                if(lossConfig().keepApprovalAfterFail) {
+                    if(!prog.approvedLevels.includes(levelNo)) prog.approvedLevels.push(levelNo);
+                } else {
+                    prog.approvedLevels = prog.approvedLevels.filter(x => Number(x) !== levelNo);
+                }
                 prog.approvedLevels.sort((a, b) => a - b);
             }
         }
@@ -3190,12 +3594,15 @@
                 updateResultReviewDoc(temp, {
                     reviewStatus: passed ? "passed" : "failed",
                     passed,
+                    lossMenuActive: passed ? false : lossConfig().enabled,
+                    lossMenuUpdatedAt: passed ? "" : new Date().toISOString(),
+                    lossMenuNote: passed ? "" : collectReviewNotes(temp),
                     reviewedBy: currentAdmin ? currentAdmin.u : "admin",
                     reviewedAt: new Date().toISOString()
                 })
             ]);
             setSaveState(passed ? "تم اعتماد اجتياز المستوى ✅" : "تم اعتماد عدم الاجتياز");
-            alert(passed ? "تم اعتماد اجتياز اللاعب وفتح الطريق للمستوى التالي." : "تم حفظ النتيجة كغير مجتاز، ويمكن للاعب إعادة المحاولة إذا كان لديه تصريح.");
+            alert(passed ? "تم اعتماد اجتياز اللاعب وفتح الطريق للمستوى التالي." : "تم حفظ النتيجة كغير مجتاز وتم فتح قائمة الخسارة ومتطلبات الشخص الغامض للاعب.");
         } catch(e) {
             console.error(e);
             alert("تعذر اعتماد النتيجة في قاعدة البيانات");
@@ -3220,7 +3627,9 @@
             if(fresh.passed) {
                 alert(`تهانينا لقد تجاوزت المستوى بصورة كبيرة 🎉\nالمستوى ${fresh.level}: ${fresh.levelTitle || ""}\nمجموعك: ${s.earned} / ${s.max} — النسبة ${s.percent}%`);
             } else {
-                alert(`تم تصحيح المستوى ${fresh.level}.\nالنتيجة: غير مجتاز حالياً.\nمجموعك: ${s.earned} / ${s.max} — النسبة ${s.percent}%`);
+                const record = getActiveLossRecord(currentUser, Number(fresh.level || 1) - 1);
+                if(record && lossConfig().enabled) renderLossScreen(record, fresh);
+                else alert(`تم تصحيح المستوى ${fresh.level}.\nالنتيجة: غير مجتاز حالياً.\nمجموعك: ${s.earned} / ${s.max} — النسبة ${s.percent}%`);
             }
         }, 250);
     }
