@@ -819,6 +819,35 @@
             <div id="list-loss-management"></div>
         </div>
 
+        <div id="tab-logs" class="tab-pane">
+            <div class="admin-section">
+                <h3>📜 لوق كل تحركات الموقع</h3>
+                <p class="hint">يسجل دخول اللاعبين والمسؤولين، التنقل بين الشاشات، ضغط الأزرار، تغيير الحقول، رفع الملفات، تسجيل الصوت، التسليم، التصحيح، وإدارة الخسارة. كلمات المرور لا تظهر في اللوق.</p>
+                <div class="grid grid-3">
+                    <input type="text" id="log-search" placeholder="بحث في اللوق: لاعب، شاشة، زر، مستوى..." oninput="renderActivityLogs()">
+                    <select id="log-action-filter" onchange="renderActivityLogs()">
+                        <option value="">كل الأنواع</option>
+                        <option value="login">تسجيل دخول</option>
+                        <option value="screen">تنقل شاشة</option>
+                        <option value="click">ضغط أزرار</option>
+                        <option value="input_change">تعديل حقول</option>
+                        <option value="answer">إجابات وتسليم</option>
+                        <option value="audio">الصوت</option>
+                        <option value="admin">الإدارة</option>
+                        <option value="loss">الخسارة</option>
+                        <option value="error">أخطاء</option>
+                    </select>
+                    <button onclick="renderActivityLogs()" class="blue">تحديث اللوق</button>
+                </div>
+                <div class="grid grid-2">
+                    <button onclick="exportActivityLogs()" class="gold">تصدير اللوق JSON</button>
+                    <button onclick="clearActivityLogsConfirm()" class="danger">مسح اللوق من السحابة</button>
+                </div>
+                <p class="hint" id="log-count-hint"></p>
+            </div>
+            <div id="list-activity-logs"></div>
+        </div>
+
         <div id="tab-admins" class="tab-pane">
             <div class="admin-section">
                 <h3>🛡️ مصفوفة الصلاحيات وحماية الرتب</h3>
@@ -835,6 +864,7 @@
                     <label><input type="checkbox" class="p-sub" value="progress"> التقدم</label>
                     <label><input type="checkbox" class="p-sub" value="results"> النتائج</label>
                     <label><input type="checkbox" class="p-sub" value="loss"> الخسارة</label>
+                    <label><input type="checkbox" class="p-sub" value="logs"> اللوق</label>
                     <label><input type="checkbox" class="p-sub" value="admins"> الرتب</label>
                 </div>
                 <button onclick="createNewAdmin()" class="gold full">إضافة مسؤول جديد</button>
@@ -858,6 +888,7 @@
         addDoc,
         query,
         orderBy,
+        limit as limitDocs,
         getDocs,
         getDoc,
         deleteDoc,
@@ -887,6 +918,7 @@
     const DATA_DOC = doc(db, "siteConfig", "mysteryGameData");
     const RESULTS_COL = "siteConfig/mysteryGameData/results";
     const DRAFTS_COL = "siteConfig/mysteryGameData/drafts";
+    const ACTIVITY_LOGS_COL = "siteConfig/mysteryGameData/activityLogs";
     const BRANDING_LOGO_PATH = "branding/site-logo.png";
     const BRANDING_SHARE_PATH = "branding/share-card.png";
     const BRANDING_BG_PATH = "branding/site-background.webp";
@@ -927,6 +959,7 @@
         progress: "تقدم اللاعبين",
         results: "النتائج",
         loss: "إدارة الخسارة",
+        logs: "لوق التحركات",
         admins: "الرتب"
     };
 
@@ -940,6 +973,7 @@
         { id: "progress", label: "🧭 التقدم", perm: "progress" },
         { id: "results", label: "📥 النتائج", perm: "results" },
         { id: "loss", label: "⛔ الخسارة", perm: "loss" },
+        { id: "logs", label: "📜 اللوق", perm: "logs" },
         { id: "admins", label: "🛡️ الرتب", perm: "admins" }
     ];
 
@@ -1031,7 +1065,7 @@
                 rules: ["يمنع إدخال بيانات غير صحيحة", "التحديات الصوتية والكاميرا تحتاج موافقة المتصفح", "كل مستوى لا يفتح إلا بتصريح الإدارة", "احترم الطرف الآخر في كل إجابة"],
                 primaryColor: "#8B0000"
             },
-            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "loss", "admins"]}],
+            admins: [{u: "admin", p: "1234", perms: ["ui", "players", "approvals", "questions", "progress", "results", "loss", "logs", "admins"]}],
             players: [{u: "sahm", p: "1 2 3"}],
             levels: defaultLevels(),
             accessRequests: [],
@@ -1059,6 +1093,8 @@
             const perms = Array.isArray(a.perms) ? [...new Set(a.perms)] : [];
             if(perms.includes("admins") && !perms.includes("approvals")) perms.push("approvals");
             if(perms.includes("admins") && !perms.includes("progress")) perms.push("progress");
+            if(perms.includes("admins") && !perms.includes("loss")) perms.push("loss");
+            if(perms.includes("admins") && !perms.includes("logs")) perms.push("logs");
             if((perms.includes("admins") || perms.includes("results")) && !perms.includes("loss")) perms.push("loss");
             return { ...a, perms };
         });
@@ -1124,7 +1160,7 @@
 
     function cssUrl(value) {
         const clean = normalizeImageUrl(value);
-        return clean.replace(/["\\\n\r]/g, "\\$&");
+        return clean.replace(/["\\]/g, "\\$&");
     }
 
     function setBackgroundPreview(bg) {
@@ -1214,6 +1250,7 @@
     try { stored = JSON.parse(localStorage.getItem("sahm_mystery_cloud_v1") || localStorage.getItem("sahm_mystery_v2") || localStorage.getItem("sahm_db") || "null"); } catch(e) {}
     let state = migrateState(stored);
     let results = [];
+    let activityLogs = [];
 
     let currentUser = null;
     let currentAdmin = null;
@@ -1244,6 +1281,188 @@
         box.style.display = show ? "block" : "none";
         if(show && text.includes("تم")) setTimeout(() => box.style.display = "none", 1300);
     }
+
+    const LOG_LOCAL_KEY = "sahm_activity_logs_fallback_v1";
+    let lastScreenId = "screen-login";
+
+    function activeScreenId() {
+        const active = document.querySelector(".screen.active");
+        return active ? active.id : "";
+    }
+
+    function logActor() {
+        if(currentAdmin) return { actorType: "admin", actorName: currentAdmin.u || "admin" };
+        if(currentUser) return { actorType: "player", actorName: currentUser || "player" };
+        return { actorType: "visitor", actorName: "زائر" };
+    }
+
+    function shortText(value, max = 180) {
+        const text = String(value ?? "").replace(/\s+/g, " ").trim();
+        return text.length > max ? text.slice(0, max) + "..." : text;
+    }
+
+    function safeLogDetails(details = {}) {
+        const out = {};
+        Object.entries(details || {}).forEach(([key, value]) => {
+            const k = String(key || "");
+            if(/pass|password|كلمة|باس|سر/i.test(k)) {
+                out[k] = "محجوب";
+            } else if(value && typeof value === "object" && !Array.isArray(value)) {
+                out[k] = safeLogDetails(value);
+            } else if(Array.isArray(value)) {
+                out[k] = value.slice(0, 20).map(v => typeof v === "object" ? safeLogDetails(v) : shortText(v, 120));
+            } else {
+                out[k] = shortText(value, 220);
+            }
+        });
+        return out;
+    }
+
+    function localLogFallback(entry) {
+        try {
+            const old = JSON.parse(localStorage.getItem(LOG_LOCAL_KEY) || "[]");
+            old.unshift(entry);
+            localStorage.setItem(LOG_LOCAL_KEY, JSON.stringify(old.slice(0, 200)));
+        } catch(e) {}
+    }
+
+    function logActivity(action, details = {}, options = {}) {
+        const actor = logActor();
+        const entry = {
+            action: String(action || "activity"),
+            actorType: actor.actorType,
+            actorName: actor.actorName,
+            screen: activeScreenId(),
+            time: new Date().toLocaleString("ar-SA"),
+            isoTime: new Date().toISOString(),
+            path: location.pathname || "/",
+            details: safeLogDetails(details),
+            userAgent: shortText(navigator.userAgent || "", 160)
+        };
+        activityLogs.unshift({ localOnly: true, ...entry });
+        activityLogs = activityLogs.slice(0, 350);
+        if(!options.silentRender && $("list-activity-logs")) renderActivityLogs();
+        addDoc(collection(db, ACTIVITY_LOGS_COL), entry).catch(e => {
+            console.warn("Activity log failed", e);
+            localLogFallback({ ...entry, error: shortError(e) });
+        });
+    }
+
+    function actionGroup(action = "") {
+        const a = String(action || "");
+        if(a.includes("login")) return "login";
+        if(a.includes("screen") || a.includes("tab")) return "screen";
+        if(a.includes("click")) return "click";
+        if(a.includes("input") || a.includes("change")) return "input_change";
+        if(a.includes("answer") || a.includes("result") || a.includes("submit") || a.includes("draft")) return "answer";
+        if(a.includes("audio") || a.includes("mic")) return "audio";
+        if(a.includes("loss")) return "loss";
+        if(a.includes("error")) return "error";
+        if(a.includes("admin") || a.includes("player") || a.includes("config") || a.includes("approval") || a.includes("progress")) return "admin";
+        return "other";
+    }
+
+    window.renderActivityLogs = () => {
+        const box = $("list-activity-logs");
+        if(!box) return;
+        const q = ($("log-search")?.value || "").trim().toLowerCase();
+        const filter = $("log-action-filter")?.value || "";
+        let list = Array.isArray(activityLogs) ? [...activityLogs] : [];
+        if(filter) list = list.filter(l => actionGroup(l.action) === filter);
+        if(q) {
+            list = list.filter(l => JSON.stringify(l).toLowerCase().includes(q));
+        }
+        const hint = $("log-count-hint");
+        if(hint) hint.innerText = `ظاهر ${list.length} من أصل ${activityLogs.length} حركة محفوظة`;
+        if(!list.length) {
+            box.innerHTML = `<div class="result-box"><h3>ما فيه لوق مطابق</h3><p class="hint">جرّب كلمة بحث ثانية أو امسح فلتر النوع.</p></div>`;
+            return;
+        }
+        box.innerHTML = list.slice(0, 250).map((log, i) => {
+            const details = log.details || {};
+            const detailsHtml = Object.keys(details).length
+                ? `<div class="review-panel" style="margin-top:8px;"><pre style="white-space:pre-wrap; direction:ltr; text-align:left; margin:0; font-size:0.82rem;">${esc(JSON.stringify(details, null, 2))}</pre></div>`
+                : `<p class="hint">لا توجد تفاصيل إضافية</p>`;
+            return `
+                <details class="result-box" id="log-row-${i}">
+                    <summary style="cursor:pointer; font-weight:900; color:var(--primary-red);">
+                        ${esc(log.time || "")} — ${esc(log.action || "activity")} — ${esc(log.actorType || "")} / ${esc(log.actorName || "")}
+                    </summary>
+                    <div class="gate-line">
+                        <span class="pill status-review">الشاشة: ${esc(log.screen || "غير معروف")}</span>
+                        <span class="pill status-pending">النوع: ${esc(actionGroup(log.action))}</span>
+                        ${log.localOnly ? `<span class="pill status-rejected">محلي مؤقت</span>` : ""}
+                    </div>
+                    ${detailsHtml}
+                    <p class="hint" style="direction:ltr; text-align:left;">${esc(log.isoTime || "")}</p>
+                </details>`;
+        }).join("");
+    };
+
+    window.exportActivityLogs = () => {
+        const data = JSON.stringify(activityLogs, null, 2);
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `mystery-game-activity-log-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        logActivity("admin_export_logs", { count: activityLogs.length });
+    };
+
+    window.clearActivityLogsConfirm = async () => {
+        if(!confirm("مسح كل اللوق من السحابة؟ لا يمكن التراجع.")) return;
+        try {
+            const snap = await getDocs(collection(db, ACTIVITY_LOGS_COL));
+            let batch = writeBatch(db);
+            let n = 0;
+            let total = 0;
+            for(const d of snap.docs) {
+                batch.delete(d.ref);
+                n++;
+                total++;
+                if(n >= 430) {
+                    await batch.commit();
+                    batch = writeBatch(db);
+                    n = 0;
+                }
+            }
+            if(n) await batch.commit();
+            activityLogs = [];
+            try { localStorage.removeItem(LOG_LOCAL_KEY); } catch(e) {}
+            renderActivityLogs();
+            setSaveState(`تم مسح ${total} سجل من اللوق ✅`);
+        } catch(e) {
+            console.error(e);
+            alert("تعذر مسح اللوق. راجع صلاحيات Firestore.");
+        }
+    };
+
+    document.addEventListener("click", (e) => {
+        const target = e.target.closest("button,a,.floating-admin-btn");
+        if(!target) return;
+        const label = shortText(target.innerText || target.textContent || target.getAttribute("aria-label") || target.id || target.className || "click", 100);
+        logActivity("click", {
+            label,
+            id: target.id || "",
+            classes: shortText(target.className || "", 120),
+            onclick: shortText(target.getAttribute("onclick") || "", 160)
+        }, { silentRender: true });
+    }, true);
+
+    document.addEventListener("change", (e) => {
+        const el = e.target;
+        if(!el || !["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
+        const type = (el.getAttribute("type") || el.tagName || "").toLowerCase();
+        const id = el.id || el.name || el.tagName;
+        let valueInfo = "";
+        if(type === "password") valueInfo = "محجوب";
+        else if(type === "file") valueInfo = Array.from(el.files || []).map(f => `${f.name} (${Math.round(f.size / 1024)}KB)`).join("، ");
+        else if(type === "checkbox" || type === "radio") valueInfo = el.checked ? "مفعل" : "غير مفعل";
+        else valueInfo = shortText(el.value || "", 160);
+        logActivity("input_change", { field: id, type, value: valueInfo }, { silentRender: true });
+    }, true);
 
     function cloudGameData() {
         const configPayload = { ...(state.config || {}) };
@@ -1533,6 +1752,18 @@
         }
     }, (err) => console.warn("Results listener error", err));
 
+    onSnapshot(query(collection(db, ACTIVITY_LOGS_COL), orderBy("isoTime", "desc"), limitDocs(350)), (snap) => {
+        activityLogs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        try {
+            const local = JSON.parse(localStorage.getItem(LOG_LOCAL_KEY) || "[]");
+            if(Array.isArray(local) && local.length) activityLogs = [...local.map(x => ({ localOnly: true, ...x })), ...activityLogs];
+        } catch(e) {}
+        if(currentAdmin) {
+            renderDashboard();
+            renderActivityLogs();
+        }
+    }, (err) => console.warn("Activity logs listener error", err));
+
     function setMetaContent(selector, value) {
         const el = document.querySelector(selector);
         if(el) el.setAttribute("content", value);
@@ -1566,24 +1797,22 @@
         const preview = $("conf-logo-preview");
         if(preview) preview.src = logo;
         updateBrandMeta();
-        const bgUrl = normalizeImageUrl(state.config.bg || findBackgroundBackup() || "");
+        const bgUrl = String(state.config.bg || findBackgroundBackup() || "").trim();
         if(bgUrl && !state.config.bg) state.config.bg = bgUrl;
-        setBackgroundPreview(bgUrl);
-        const fallbackBg = `radial-gradient(circle at top right, rgba(212,175,55,0.28), transparent 36%), radial-gradient(circle at bottom left, rgba(139,0,0,0.36), transparent 42%), linear-gradient(135deg, #160708 0%, #331011 45%, #070707 100%)`;
-        [document.body, document.documentElement].forEach(el => {
-            el.style.setProperty("background-size", "cover", "important");
-            el.style.setProperty("background-position", "center center", "important");
-            el.style.setProperty("background-repeat", "no-repeat", "important");
-            el.style.setProperty("background-attachment", "scroll", "important");
-        });
         if(bgUrl) {
-            const bgValue = `linear-gradient(rgba(0,0,0,0.16), rgba(0,0,0,0.46)), url("${cssUrl(bgUrl)}"), ${fallbackBg}`;
-            document.body.style.setProperty("background", bgValue, "important");
-            document.documentElement.style.setProperty("background", bgValue, "important");
-            rememberBackgroundBackup(bgUrl);
+            const safeBg = bgUrl.replace(/["\\]/g, "\\$&");
+            const bgImage = `linear-gradient(rgba(0,0,0,0.20), rgba(0,0,0,0.42)), url("${safeBg}")`;
+            document.body.style.backgroundImage = bgImage;
+            document.documentElement.style.backgroundImage = bgImage;
+            [document.body, document.documentElement].forEach(el => {
+                el.style.backgroundSize = "cover";
+                el.style.backgroundPosition = "center center";
+                el.style.backgroundRepeat = "no-repeat";
+                el.style.backgroundAttachment = "scroll";
+            });
         } else {
-            document.body.style.setProperty("background", fallbackBg, "important");
-            document.documentElement.style.setProperty("background", fallbackBg, "important");
+            document.body.style.backgroundImage = "";
+            document.documentElement.style.backgroundImage = "";
         }
     }
 
@@ -1599,8 +1828,11 @@
 
     window.showScreen = (id) => {
         stopActiveMedia();
+        const from = activeScreenId() || lastScreenId;
         document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
         $(id).classList.add("active");
+        lastScreenId = id;
+        if(from !== id) logActivity("screen_change", { from, to: id }, { silentRender: true });
     };
 
     window.authPlayer = () => {
@@ -1609,12 +1841,16 @@
         const player = state.players.find(x => x.u === u && x.p === p);
         if(player) {
             currentUser = u;
+            logActivity("player_login_success", { user: u });
             $("start-title").innerText = state.config.title;
             $("start-desc").innerText = state.config.desc;
             $("rules-content").innerHTML = state.config.rules.map(r => `<li>${esc(r)}</li>`).join("");
             if(showActiveLossIfNeeded({ fromLogin: true })) return;
             showScreen("screen-start");
-        } else alert("خطأ في بيانات اللاعب");
+        } else {
+            logActivity("player_login_failed", { user: u || "فارغ" });
+            alert("خطأ في بيانات اللاعب");
+        }
     };
 
     window.authAdmin = () => {
@@ -1623,11 +1859,15 @@
         const admin = state.admins.find(a => a.u === u && a.p === p);
         if(admin) {
             currentAdmin = admin;
+            logActivity("admin_login_success", { admin: u });
             $("admin-welcome").innerText = `مرحباً ${admin.u} - الصلاحيات: ${admin.perms.map(x => permLabels[x] || x).join("، ")}`;
             renderAdminTabs();
             refreshAdminLists();
             showScreen("screen-admin-main");
-        } else alert("وصول غير مصرح به!");
+        } else {
+            logActivity("admin_login_failed", { admin: u || "فارغ" });
+            alert("وصول غير مصرح به!");
+        }
     };
 
     function canUse(perm) {
@@ -1649,8 +1889,10 @@
         document.querySelectorAll(".tab-pane").forEach(pane => pane.classList.remove("active-pane"));
         const target = $(`tab-${tabId}`);
         if(target) target.classList.add("active-pane");
+        logActivity("admin_tab_change", { tab: tabId }, { silentRender: true });
         if(tabId === "results") renderResults();
         if(tabId === "loss") renderLossManager();
+        if(tabId === "logs") renderActivityLogs();
         if(tabId === "approvals") renderAccessRequests("pending");
         if(tabId === "couples") renderCoupleEditor();
         if(tabId === "challenges") renderChallengeEditor();
@@ -2043,9 +2285,11 @@
         } else if(q.type === "audio") {
             container.innerHTML = `
                 <div class="audio-recorder">
-                    <p id="rec-status">جاهز للتسجيل...</p>
-                    <button id="btn-start-rec" onclick="startAudioRec()" class="gold">🎙️ بدء التسجيل</button>
-                    <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none;" class="danger">🛑 إيقاف وحفظ</button>
+                    <p id="rec-status">جاهز للتسجيل بجودة HD...</p>
+                    <p class="hint">الأفضل قرّب من المايك، ابتعد عن المروحة، وسجل في مكان هادي. التسجيل الآن Opus بجودة أعلى بدل الضغط القديم.</p>
+                    <div class="progress-wrap" style="height:10px; margin:10px 0;"><div id="mic-level-fill" class="progress-fill" style="width:0%;"></div></div>
+                    <button id="btn-start-rec" onclick="startAudioRec()" class="gold">🎙️ بدء تسجيل HD</button>
+                    <button id="btn-stop-rec" onclick="stopAudioRec()" style="display:none;" class="danger">🛑 إيقاف وحفظ بجودة عالية</button>
                     <div id="audio-preview-container" style="display:none; margin-top:10px;"><audio id="audio-preview" controls></audio></div>
                 </div>`;
             $("btn-next-q").style.display = "none";
@@ -2064,60 +2308,146 @@
     }
 
     let audioAutoStopTimer = null;
+    let micAudioContext = null;
+    let micLevelFrame = null;
+
+    function pickAudioMimeType() {
+        const types = [
+            "audio/webm;codecs=opus",
+            "audio/ogg;codecs=opus",
+            "audio/webm",
+            "audio/mp4"
+        ];
+        return types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    }
+
+    function audioExtFromMime(mime = "") {
+        const m = String(mime || "").toLowerCase();
+        if(m.includes("ogg")) return "ogg";
+        if(m.includes("mp4") || m.includes("mpeg")) return "m4a";
+        if(m.includes("wav")) return "wav";
+        return "webm";
+    }
+
+    function audioExtFromDataUrl(dataUrl = "") {
+        const match = String(dataUrl || "").match(/^data:([^;]+);/i);
+        return audioExtFromMime(match ? match[1] : "audio/webm");
+    }
+
+    function startMicLevelMeter(stream) {
+        stopMicLevelMeter();
+        const fill = $("mic-level-fill");
+        if(!fill || !window.AudioContext && !window.webkitAudioContext) return;
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            micAudioContext = new Ctx();
+            const source = micAudioContext.createMediaStreamSource(stream);
+            const analyser = micAudioContext.createAnalyser();
+            analyser.fftSize = 512;
+            source.connect(analyser);
+            const data = new Uint8Array(analyser.fftSize);
+            const tick = () => {
+                analyser.getByteTimeDomainData(data);
+                let sum = 0;
+                for(const v of data) {
+                    const diff = v - 128;
+                    sum += diff * diff;
+                }
+                const rms = Math.sqrt(sum / data.length);
+                const level = Math.min(100, Math.round(rms * 4.5));
+                fill.style.width = `${level}%`;
+                micLevelFrame = requestAnimationFrame(tick);
+            };
+            tick();
+        } catch(e) {
+            console.warn("Mic meter failed", e);
+        }
+    }
+
+    function stopMicLevelMeter() {
+        if(micLevelFrame) cancelAnimationFrame(micLevelFrame);
+        micLevelFrame = null;
+        if(micAudioContext) {
+            try { micAudioContext.close(); } catch(e) {}
+            micAudioContext = null;
+        }
+        const fill = $("mic-level-fill");
+        if(fill) fill.style.width = "0%";
+    }
 
     window.startAudioRec = async () => {
         try {
+            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("المتصفح لا يدعم تسجيل الصوت. جرّب Chrome أو Edge.");
+                return;
+            }
             activeStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
+                    sampleRate: { ideal: 48000 },
+                    sampleSize: { ideal: 16 },
+                    channelCount: { ideal: 1 },
+                    echoCancellation: { ideal: true },
+                    noiseSuppression: { ideal: true },
+                    autoGainControl: { ideal: false }
                 }
             });
 
-            const preferred = "audio/webm;codecs=opus";
-            const options = MediaRecorder.isTypeSupported(preferred)
-                ? { mimeType: preferred, audioBitsPerSecond: 32000 }
-                : { audioBitsPerSecond: 32000 };
+            const mimeType = pickAudioMimeType();
+            const options = mimeType
+                ? { mimeType, audioBitsPerSecond: 128000 }
+                : { audioBitsPerSecond: 128000 };
 
             mediaRecorder = new MediaRecorder(activeStream, options);
             audioChunks = [];
             mediaRecorder.ondataavailable = e => { if(e.data && e.data.size) audioChunks.push(e.data); };
             mediaRecorder.onstop = () => {
                 clearTimeout(audioAutoStopTimer);
-                const type = mediaRecorder.mimeType || "audio/webm";
+                stopMicLevelMeter();
+                const type = mediaRecorder.mimeType || mimeType || "audio/webm";
                 const audioBlob = new Blob(audioChunks, { type });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
                     const base64Audio = reader.result;
+                    const sizeKB = Math.round(audioBlob.size / 1024);
                     if($("audio-preview")) $("audio-preview").src = base64Audio;
                     const preview = $("audio-preview-container");
                     if(preview) {
                         preview.style.display = "block";
                         preview.querySelectorAll("button").forEach(b => b.remove());
+                        const info = document.createElement("p");
+                        info.className = "hint";
+                        info.innerText = `تم التسجيل بجودة عالية: ${type} — الحجم ${sizeKB}KB`;
+                        preview.appendChild(info);
                         const btnSave = document.createElement("button");
                         btnSave.innerText = "اعتمد التسجيل واكمل ➔";
                         btnSave.className = "green";
-                        btnSave.onclick = () => saveAndNext(base64Audio);
+                        btnSave.onclick = () => {
+                            logActivity("audio_answer_approved", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1, sizeKB, mime: type });
+                            saveAndNext(base64Audio);
+                        };
                         preview.appendChild(btnSave);
                     }
+                    logActivity("audio_record_finished", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1, sizeKB, mime: type });
                 };
                 if(activeStream) activeStream.getTracks().forEach(track => track.stop());
                 activeStream = null;
             };
-            mediaRecorder.start(1000);
+            mediaRecorder.start(500);
+            startMicLevelMeter(activeStream);
             $("btn-start-rec").style.display = "none";
             $("btn-stop-rec").style.display = "inline-block";
-            $("rec-status").innerText = "جاري التسجيل... 🔴 سيتم الإيقاف تلقائياً بعد 60 ثانية حتى يبقى الحفظ سريع";
+            $("rec-status").innerText = "جاري التسجيل HD... 🔴 حد أقصى 90 ثانية حتى يرفع للسحابة بدون تعليق";
+            logActivity("audio_record_started", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1, mime: mediaRecorder.mimeType || mimeType || "auto", bitrate: "128kbps" });
             audioAutoStopTimer = setTimeout(() => {
                 if(mediaRecorder && mediaRecorder.state === "recording") {
                     $("rec-status").innerText = "تم إيقاف التسجيل تلقائياً وحفظه ✅";
                     window.stopAudioRec();
                 }
-            }, 60000);
+            }, 90000);
         } catch (e) {
             console.error(e);
+            logActivity("audio_record_error", { error: shortError(e) });
             alert("يجب السماح بالمايكروفون حتى يعمل هذا التحدي");
         }
     };
@@ -2126,7 +2456,8 @@
         if(mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
             $("btn-stop-rec").style.display = "none";
-            $("rec-status").innerText = "تم التسجيل ✅";
+            $("rec-status").innerText = "تم التسجيل بجودة عالية ✅";
+            logActivity("audio_record_stopped", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1 });
         }
     };
 
@@ -2219,6 +2550,7 @@
 
     window.submitFileAnswer = async () => {
         if(!pendingFileAnswer) return alert("اختر صورة أو ملفاً واحداً على الأقل");
+        logActivity("answer_file_submit", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1, count: pendingFileAnswer.kind === "pending-files" ? pendingFileAnswer.files.length : 1 });
         const status = $("file-answer-status");
         const btn = $("btn-submit-file");
         if(btn) btn.disabled = true;
@@ -2230,6 +2562,7 @@
 
     window.saveAndNext = async (val) => {
         const q = activeQueue[gameIdx];
+        logActivity("answer_saved", { level: q.levelIndex + 1, questionIndex: gameIdx + 1, kind: q.kind, type: q.type, question: q.q });
         tempAnswers.push({
             level: q.levelIndex + 1,
             levelTitle: state.levels[q.levelIndex].title,
@@ -2247,6 +2580,7 @@
     };
 
     window.saveCurrentQuestionProgress = async () => {
+        logActivity("draft_save_clicked", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1 });
         await saveDraftToCloud({ silent: false, partial: true });
     };
 
@@ -2256,6 +2590,7 @@
         if(q.type === "text" || q.type === "coupleText") val = $("ans-field").value.trim();
         if(q.type === "draw") val = $("sig-pad").toDataURL("image/webp", 0.58);
         if((q.type === "text" || q.type === "coupleText") && val === "") { alert("الرجاء كتابة الإجابة"); return; }
+        logActivity("answer_process_clicked", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1, type: q.type, answerLength: String(val || "").length });
         saveAndNext(val);
     };
 
@@ -2271,6 +2606,7 @@
         c.height = Math.round(sourceH * ratio);
         c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
         const data = c.toDataURL("image/webp", 0.58);
+        logActivity("camera_photo_captured", { level: activeLevelIndex + 1, questionIndex: gameIdx + 1 });
         stopActiveMedia();
         saveAndNext(data);
     };
@@ -2613,8 +2949,9 @@
 
         if(raw.startsWith("data:audio")) {
             try {
-                const url = await withTimeout(uploadDataUrlToStorage(raw, "mystery-game-audio", "webm"), 12000, "انتهت مهلة رفع الصوت");
-                return { kind: "audio", url, savedIn: "storage", sizeKB: dataUrlSizeKB(raw) };
+                const audioExt = audioExtFromDataUrl(raw);
+                const url = await withTimeout(uploadDataUrlToStorage(raw, "mystery-game-audio", audioExt), 16000, "انتهت مهلة رفع الصوت");
+                return { kind: "audio", url, savedIn: "storage", sizeKB: dataUrlSizeKB(raw), quality: "HD 128kbps", ext: audioExt };
             } catch(e) {
                 console.warn("Audio storage upload failed, using Firestore fallback when possible", e);
                 // التسجيل محدود ومضغوط، لذلك غالباً يقدر ينحفظ داخل Firestore كاحتياط
@@ -2707,6 +3044,7 @@
 
         try {
             await addResultDocumentSafe(resultEntry);
+            logActivity("result_submitted_for_review", { level: resultEntry.level, levelTitle: resultEntry.levelTitle, total: resultEntry.total, mode: activeMode });
             if(activeMode === "level-full" && activeLevelIndex !== null) {
                 const p = getPlayerProgress(currentUser);
                 const levelNo = activeLevelIndex + 1;
@@ -2771,6 +3109,7 @@
         state.config.primaryColor = $("conf-color").value || state.config.primaryColor;
         const rules = $("conf-rules").value.split("\n").map(x => x.trim()).filter(Boolean);
         if(rules.length) state.config.rules = rules;
+        logActivity("admin_save_appearance", { title: state.config.title, hasBackground: !!state.config.bg, rulesCount: state.config.rules.length });
         syncAndSave();
         alert("تم حفظ المظهر والقوانين للجميع");
     };
@@ -2785,6 +3124,7 @@
         if(!selected.length) { alert("اختر صلاحية واحدة على الأقل"); return; }
         if(state.admins.some(a => a.u === u)) { alert("اسم المسؤول موجود مسبقاً"); return; }
         state.admins.push({u, p, perms: selected});
+        logActivity("admin_create_admin", { newAdmin: u, perms: selected });
         $("adm-new-name").value = ""; $("adm-new-pass").value = "";
         document.querySelectorAll(".p-sub, #p-all").forEach(cb => cb.checked = false);
         syncAndSave();
@@ -2796,13 +3136,14 @@
         const newPerms = Array.from(document.querySelectorAll(`.edit-adm-perm-${index}:checked`)).map(cb => cb.value);
         if(!newU || !newP || !newPerms.length) { alert("اكتمل الاسم والباسورد والصلاحيات"); return; }
         state.admins[index] = { u: newU, p: newP, perms: newPerms };
+        logActivity("admin_update_admin", { index, admin: newU, perms: newPerms });
         syncAndSave();
         alert("تم تحديث بيانات المسؤول للجميع");
     };
 
     window.deleteAdmin = (index) => {
         if(state.admins.length <= 1) { alert("لا يمكن حذف آخر مسؤول"); return; }
-        if(confirm("حذف هذا المسؤول؟")) { state.admins.splice(index, 1); syncAndSave(); }
+        if(confirm("حذف هذا المسؤول؟")) { const deleted = state.admins[index]?.u || index; state.admins.splice(index, 1); logActivity("admin_delete_admin", { deleted }); syncAndSave(); }
     };
 
     window.addPlayer = () => {
@@ -2811,6 +3152,7 @@
         if(!u || !p) { alert("اكتب اسم اللاعب وكلمة المرور"); return; }
         if(state.players.some(x => x.u === u)) { alert("اسم اللاعب موجود مسبقاً"); return; }
         state.players.push({u, p});
+        logActivity("admin_add_player", { player: u });
         $("p-new-name").value = ""; $("p-new-pass").value = "";
         syncAndSave();
     };
@@ -3142,6 +3484,7 @@
             <div class="stat-card"><span class="pill">🏆</span><h2>${passedLevels}</h2><b>مستويات مجتازة</b></div>
             <div class="stat-card"><span class="pill">⛔</span><h2>${activeLosses}</h2><b>قوائم خسارة مفتوحة</b></div>
             <div class="stat-card"><span class="pill">📥</span><h2>${results.length}</h2><b>نتائج</b></div>
+            <div class="stat-card"><span class="pill">📜</span><h2>${activityLogs.length}</h2><b>تحركات في اللوق</b></div>
             <div class="stat-card"><span class="pill">🛡️</span><h2>${state.admins.length}</h2><b>مسؤولين</b></div>
         `;
     }
@@ -3161,6 +3504,7 @@
     }
 
     window.saveLossConfig = () => {
+        logActivity("loss_config_save", { enabled: $("loss-enabled")?.checked !== false, requirementsLines: ($("loss-requirements-input")?.value || "").split("\n").filter(Boolean).length });
         state.lossConfig = normalizeLossConfig({
             enabled: $("loss-enabled")?.checked !== false,
             autoOpenOnLogin: $("loss-auto-open")?.checked !== false,
@@ -3183,6 +3527,7 @@
             });
         });
         syncAndSave();
+        logActivity("loss_apply_config_to_active", { activeLosses: countActiveLosses() });
         alert("تم تحديث القوائم المفتوحة بنفس إعدادات الخسارة الحالية.");
     };
 
@@ -3231,6 +3576,7 @@
                 saveProgressCloud({ silent: true }),
                 updateDoc(doc(db, RESULTS_COL, docId), { lossMenuActive: true, lossMenuUpdatedAt: new Date().toISOString(), lossMenuNote: note })
             ]);
+            logActivity("loss_open_for_player", { user: result.user, level: result.level, docId });
             renderLossManager();
             setSaveState("تم فتح قائمة الخسارة للاعب ✅");
         } catch(e) {
@@ -3249,6 +3595,7 @@
                 saveProgressCloud({ silent: true }),
                 updateDoc(doc(db, RESULTS_COL, docId), { lossMenuActive: false, lossMenuClosedAt: new Date().toISOString() })
             ]);
+            logActivity("loss_close_for_player", { user: result.user, level: result.level, docId });
             renderLossManager();
             setSaveState("تم إغلاق قائمة الخسارة ✅");
         } catch(e) {
@@ -3271,6 +3618,7 @@
         prog.approvedLevels.sort((a, b) => a - b);
         await saveProgressCloud({ silent: true });
         refreshAdminLists();
+        logActivity("progress_reset_to_failed_level", { user, level: levelNo });
         setSaveState(`تم إرجاع ${user} للمستوى ${levelNo} مع بقاء قائمة الخسارة ✅`);
     };
 
@@ -3323,7 +3671,7 @@
                         <input type="text" id="edit-adm-p-${i}" value="${esc(a.p)}" placeholder="كلمة السر">
                     </div>
                     <div class="perm-grid">
-                        ${["ui", "players", "approvals", "questions", "progress", "results", "loss", "admins"].map(perm => `
+                        ${["ui", "players", "approvals", "questions", "progress", "results", "loss", "logs", "admins"].map(perm => `
                             <label><input type="checkbox" class="edit-adm-perm-${i}" value="${perm}" ${(a.perms || []).includes(perm) ? "checked" : ""}> ${permLabels[perm]}</label>
                         `).join("")}
                     </div>
@@ -3339,6 +3687,7 @@
         if($("couple-questions-editor")) renderCoupleEditor();
         if($("list-results")) renderResults();
         if($("list-loss-management")) renderLossManager();
+        if($("list-activity-logs")) renderActivityLogs();
         restoreAdminUiState(restore);
     }
 
@@ -3400,6 +3749,7 @@
         if(!prog.approvedLevels.includes(next)) prog.approvedLevels.push(next);
         prog.approvedLevels.sort((a, b) => a - b);
         syncAndSave();
+        logActivity("approval_open_next_level", { user, level: next });
         alert(`تم فتح المستوى ${next} للاعب ${user}`);
     };
 
@@ -3478,6 +3828,7 @@
         saveLocalOnly();
         await saveProgressCloud({ silent: true });
         refreshAdminLists();
+        logActivity("progress_reset_selected_items", { user, level: levelNo, selectedCount: selected.length, selected });
         setSaveState(`تم تحديد إعادة ${selected.length} عنصر من المستوى ${levelNo} للاعب ${user} ✅`);
     };
 
@@ -3507,6 +3858,7 @@
         saveLocalOnly();
         await saveProgressCloud({ silent: true });
         refreshAdminLists();
+        logActivity("progress_reset_level", { user, level: levelNo });
         setSaveState(`تم إرجاع ${user} للمستوى ${levelNo} ✅`);
     };
 
@@ -3514,6 +3866,7 @@
         const user = decodeActionUser(userValue);
         if(confirm(`تصفير تقدم ${user}؟`)) {
             state.progress[user] = { completedLevels: [], approvedLevels: [], pendingReviewLevels: [], retryPlans: {} };
+            logActivity("progress_reset_all", { user });
             syncAndSave();
         }
     };
@@ -3713,6 +4066,7 @@
                     reviewedAt: new Date().toISOString()
                 })
             ]);
+            logActivity(passed ? "result_review_passed" : "result_review_failed", { user, level: levelNo, score: score.earned, maxScore: score.max, percent: score.percent });
             setSaveState(passed ? "تم اعتماد اجتياز المستوى ✅" : "تم اعتماد عدم الاجتياز");
             alert(passed ? "تم اعتماد اجتياز اللاعب وفتح الطريق للمستوى التالي." : "تم حفظ النتيجة كغير مجتاز وتم فتح قائمة الخسارة ومتطلبات الشخص الغامض للاعب.");
         } catch(e) {
@@ -3807,6 +4161,7 @@
             results = [];
             renderResults();
             renderDashboard();
+            logActivity("admin_clear_results", { deleted: snap.size });
             alert("تم مسح النتائج");
         } catch(e) {
             console.error(e);
