@@ -456,6 +456,12 @@
             border: 2px solid var(--gold);
             background: white;
         }
+        .bg-preview-img {
+            width: 180px !important;
+            height: 100px !important;
+            border-radius: 16px !important;
+            object-fit: cover !important;
+        }
         .result-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 10px 0; }
         .answer-media { max-width: 220px; border-radius: 10px; border: 1px solid var(--line); }
 
@@ -674,7 +680,20 @@
                     </div>
                 </div>
                 <input type="text" id="conf-logo" placeholder="رابط اللوجو - اختياري إذا عندك رابط مباشر">
-                <input type="text" id="conf-bg" placeholder="رابط الخلفية - اتركه فارغ = لا تغيّر الخلفية المحفوظة">
+                <input type="text" id="conf-bg" placeholder="رابط الخلفية المباشر أو ارفع صورة من الزر تحت">
+                <div class="logo-uploader">
+                    <h4>🖼️ خلفية الموقع</h4>
+                    <p class="hint">ارفع صورة خلفية من جهازك، أو الصق رابط صورة مباشر في الخانة. سيتم حفظها بالسحابة وتظهر لكل اللاعبين.</p>
+                    <input type="file" id="conf-bg-file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                    <div class="grid grid-2">
+                        <button type="button" onclick="uploadSiteBackground()" class="blue">رفع الخلفية واعتمادها للجميع</button>
+                        <button type="button" onclick="applyBackgroundFromInput()" class="gold">تجربة/حفظ رابط الخلفية</button>
+                    </div>
+                    <div class="logo-preview-row">
+                        <img id="conf-bg-preview" class="bg-preview-img" src="" alt="Background Preview" style="display:none;">
+                        <span class="hint" id="bg-upload-status">الخلفية تدعم PNG / JPG / WebP، والأفضل صورة عريضة.</span>
+                    </div>
+                </div>
                 <div class="grid grid-2">
                     <button type="button" onclick="restoreBackgroundBackup()" class="secondary">↩️ استرجاع آخر خلفية محفوظة بالجهاز</button>
                     <button type="button" onclick="copyCurrentBackgroundToInput()" class="blue">📌 وضع الخلفية الحالية في الخانة</button>
@@ -870,6 +889,7 @@
     const DRAFTS_COL = "siteConfig/mysteryGameData/drafts";
     const BRANDING_LOGO_PATH = "branding/site-logo.png";
     const BRANDING_SHARE_PATH = "branding/share-card.png";
+    const BRANDING_BG_PATH = "branding/site-background.webp";
     const PUBLIC_BRANDING_LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fsite-logo.png?alt=media";
     const PUBLIC_SHARE_IMAGE_URL = "https://firebasestorage.googleapis.com/v0/b/syf12-a7161.firebasestorage.app/o/branding%2Fshare-card.png?alt=media";
 
@@ -1092,6 +1112,35 @@
     function isUsableUrl(value) {
         const v = String(value || "").trim();
         return /^https?:\/\//i.test(v) || v.startsWith("data:image/");
+    }
+
+    function normalizeImageUrl(value) {
+        return String(value || "")
+            .trim()
+            .replace(/^url\((.*)\)$/i, "$1")
+            .replace(/^['"]|['"]$/g, "")
+            .trim();
+    }
+
+    function cssUrl(value) {
+        const clean = normalizeImageUrl(value);
+        return clean.replace(/["\\\n\r]/g, "\\$&");
+    }
+
+    function setBackgroundPreview(bg) {
+        const preview = $("conf-bg-preview");
+        const status = $("bg-upload-status");
+        const clean = normalizeImageUrl(bg);
+        if(preview) {
+            if(clean) {
+                preview.src = clean;
+                preview.style.display = "block";
+            } else {
+                preview.removeAttribute("src");
+                preview.style.display = "none";
+            }
+        }
+        if(status && clean) status.innerText = "الخلفية الحالية محفوظة وتظهر للجميع.";
     }
 
     function rememberBackgroundBackup(bg) {
@@ -1517,22 +1566,24 @@
         const preview = $("conf-logo-preview");
         if(preview) preview.src = logo;
         updateBrandMeta();
-        const bgUrl = String(state.config.bg || findBackgroundBackup() || "").trim();
+        const bgUrl = normalizeImageUrl(state.config.bg || findBackgroundBackup() || "");
         if(bgUrl && !state.config.bg) state.config.bg = bgUrl;
+        setBackgroundPreview(bgUrl);
+        const fallbackBg = `radial-gradient(circle at top right, rgba(212,175,55,0.28), transparent 36%), radial-gradient(circle at bottom left, rgba(139,0,0,0.36), transparent 42%), linear-gradient(135deg, #160708 0%, #331011 45%, #070707 100%)`;
+        [document.body, document.documentElement].forEach(el => {
+            el.style.setProperty("background-size", "cover", "important");
+            el.style.setProperty("background-position", "center center", "important");
+            el.style.setProperty("background-repeat", "no-repeat", "important");
+            el.style.setProperty("background-attachment", "scroll", "important");
+        });
         if(bgUrl) {
-            const safeBg = bgUrl.replace(/["\\]/g, "\\$&");
-            const bgImage = `linear-gradient(rgba(0,0,0,0.20), rgba(0,0,0,0.42)), url("${safeBg}")`;
-            document.body.style.backgroundImage = bgImage;
-            document.documentElement.style.backgroundImage = bgImage;
-            [document.body, document.documentElement].forEach(el => {
-                el.style.backgroundSize = "cover";
-                el.style.backgroundPosition = "center center";
-                el.style.backgroundRepeat = "no-repeat";
-                el.style.backgroundAttachment = "scroll";
-            });
+            const bgValue = `linear-gradient(rgba(0,0,0,0.16), rgba(0,0,0,0.46)), url("${cssUrl(bgUrl)}"), ${fallbackBg}`;
+            document.body.style.setProperty("background", bgValue, "important");
+            document.documentElement.style.setProperty("background", bgValue, "important");
+            rememberBackgroundBackup(bgUrl);
         } else {
-            document.body.style.backgroundImage = "";
-            document.documentElement.style.backgroundImage = "";
+            document.body.style.setProperty("background", fallbackBg, "important");
+            document.documentElement.style.setProperty("background", fallbackBg, "important");
         }
     }
 
@@ -2382,6 +2433,64 @@
         lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
     }
 
+    async function optimizeImageFileToBlob(file, maxSide = 1920, quality = 0.82) {
+        if(!file || !file.type || !file.type.startsWith("image/") || file.type.includes("svg")) return file;
+        try {
+            const img = await loadImageFromBlob(file);
+            const ratio = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round((img.width || maxSide) * ratio));
+            canvas.height = Math.max(1, Math.round((img.height || maxSide) * ratio));
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            return await canvasToBlob(canvas, "image/webp", quality);
+        } catch(e) {
+            console.warn("Image optimization failed, uploading original", e);
+            return file;
+        }
+    }
+
+    window.applyBackgroundFromInput = async () => {
+        const input = $("conf-bg");
+        const nextBg = normalizeImageUrl(input ? input.value : "");
+        if(!nextBg) { alert("حط رابط الخلفية أو ارفع صورة من جهازك"); return; }
+        if(!isUsableUrl(nextBg)) { alert("رابط الخلفية لازم يكون مباشر ويبدأ بـ https://"); return; }
+        state.config.bg = nextBg;
+        rememberBackgroundBackup(nextBg);
+        saveLocalOnly();
+        applyVisuals();
+        await saveGameCloud({ force: true });
+        setSaveState("تم حفظ الخلفية للجميع ✅");
+    };
+
+    window.uploadSiteBackground = async () => {
+        const input = $("conf-bg-file");
+        const status = $("bg-upload-status");
+        const file = input && input.files ? input.files[0] : null;
+        if(!file) { alert("اختر صورة الخلفية أولاً"); return; }
+        if(!file.type.startsWith("image/")) { alert("الملف لازم يكون صورة"); return; }
+        try {
+            if(status) status.innerText = "جاري رفع الخلفية وتحسين حجمها...";
+            const optimized = await optimizeImageFileToBlob(file, 1920, 0.82);
+            const path = optimized.type && optimized.type.includes("svg") ? "branding/site-background.svg" : BRANDING_BG_PATH;
+            const bgUrl = await uploadBlobToStorage(optimized, path);
+            state.config.bg = bgUrl;
+            rememberBackgroundBackup(bgUrl);
+            if($("conf-bg")) $("conf-bg").value = bgUrl;
+            setBackgroundPreview(bgUrl);
+            saveLocalOnly();
+            applyVisuals();
+            refreshAdminLists();
+            await saveGameCloud({ force: true });
+            if(status) status.innerText = "تم رفع الخلفية واعتمادها للجميع ✅";
+            alert("تم رفع الخلفية وحفظها للجميع بنجاح");
+        } catch(e) {
+            console.error(e);
+            if(status) status.innerText = "فشل رفع الخلفية. تأكد من تفعيل Firebase Storage Rules.";
+            alert("فشل رفع الخلفية. إذا كان Storage مقفل استخدم رابط صورة مباشر يبدأ بـ https://");
+        }
+    };
+
     window.uploadSiteLogo = async () => {
         const input = $("conf-logo-file");
         const status = $("logo-upload-status");
@@ -2647,9 +2756,10 @@
 
     window.syncVisuals = () => {
         state.config.logo = $("conf-logo").value.trim() || state.config.logo;
-        const nextBg = $("conf-bg").value.trim();
+        const nextBg = normalizeImageUrl($("conf-bg").value);
         // لا نحذف الخلفية أبداً إذا تركت الخانة فاضية. الفاضي يعني: لا تغيّر الخلفية ولا نرسل قيمة فاضية للسحابة.
         if(nextBg) {
+            if(!isUsableUrl(nextBg)) { alert("رابط الخلفية لازم يبدأ بـ https:// أو ارفع صورة من جهازك."); return; }
             state.config.bg = nextBg;
             rememberBackgroundBackup(nextBg);
         } else if(!state.config.bg) {
@@ -3168,7 +3278,9 @@
         if(!$("conf-logo")) return;
         $("conf-logo").value = state.config.logo || "";
         if($("conf-logo-preview")) $("conf-logo-preview").src = state.config.logo || PUBLIC_BRANDING_LOGO_URL;
-        $("conf-bg").value = state.config.bg || findBackgroundBackup() || "";
+        const bgValue = state.config.bg || findBackgroundBackup() || "";
+        $("conf-bg").value = bgValue;
+        setBackgroundPreview(bgValue);
         $("conf-title").value = state.config.title || "";
         $("conf-desc").value = state.config.desc || "";
         $("conf-rules").value = (state.config.rules || []).join("\n");
