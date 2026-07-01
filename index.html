@@ -2410,6 +2410,11 @@
         uploadBytes,
         getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
+    import {
+        getAuth,
+        signInAnonymously,
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAlykJlLJhPFldh5YLsG96AUOTV4TCnu64",
@@ -2423,6 +2428,34 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const auth = getAuth(app);
+    let authReadyPromise = null;
+
+    function ensureFirebaseAuth() {
+        if(auth.currentUser) return Promise.resolve(true);
+        if(authReadyPromise) return authReadyPromise;
+        authReadyPromise = new Promise((resolve) => {
+            let done = false;
+            let unsub = null;
+            const finish = (ok) => {
+                if(done) return;
+                done = true;
+                try { if(unsub) unsub(); } catch(e) {}
+                resolve(ok);
+            };
+            unsub = onAuthStateChanged(auth, user => {
+                if(user) finish(true);
+            }, () => finish(false));
+            signInAnonymously(auth)
+                .then(() => finish(true))
+                .catch((e) => {
+                    console.warn("Anonymous auth unavailable; trying public Firestore rules", e);
+                    finish(false);
+                });
+            setTimeout(() => finish(false), 3500);
+        });
+        return authReadyPromise;
+    }
 
     // كل بيانات اللعبة محفوظة داخل siteConfig حتى تكون القراءة والكتابة أوضح وأسهل في Firebase Rules
     const DATA_DOC = doc(db, "siteConfig", "mysteryGameData");
@@ -3301,6 +3334,38 @@
         return v;
     }
 
+    function deepFirestoreSafe(value, path = "root") {
+        if(value === undefined) return null;
+        if(value === null) return null;
+        if(typeof value === "string") {
+            if(value.startsWith("data:")) {
+                const kb = dataUrlSizeKB(value);
+                if(kb > 700) return "";
+            }
+            // Firestore document strings الكبيرة جداً تسبب فشل صامت عند بعض المتصفحات
+            if(value.length > 350000) return value.slice(0, 350000);
+            return value;
+        }
+        if(typeof value === "number" || typeof value === "boolean") return value;
+        if(Array.isArray(value)) return value.slice(0, 600).map((item, i) => deepFirestoreSafe(item, `${path}.${i}`));
+        if(typeof value === "object") {
+            const out = {};
+            Object.entries(value).forEach(([k, v]) => {
+                if(typeof k !== "string" || !k.trim()) return;
+                if(k.startsWith("__html") || k.startsWith("_dom")) return;
+                const cleaned = deepFirestoreSafe(v, `${path}.${k}`);
+                if(cleaned !== undefined) out[k] = cleaned;
+            });
+            return out;
+        }
+        return String(value || "");
+    }
+
+    function estimateFirestoreSizeKB(obj) {
+        try { return Math.round(new Blob([JSON.stringify(obj)]).size / 1024); }
+        catch(e) { return Math.round((JSON.stringify(obj) || "").length / 1024); }
+    }
+
     function cloudGameData(includeTimestamp = true) {
         const configPayload = { ...(state.config || {}) };
         // حماية مهمة: لا نرسل خلفية فاضية للسحابة حتى لا تنمسح الخلفية المحفوظة سابقاً.
@@ -3308,7 +3373,7 @@
             configPayload[key] = sanitizeLargeDataUrl(configPayload[key], key);
             if(!String(configPayload[key] || "").trim()) delete configPayload[key];
         });
-        const payload = {
+        let payload = {
             config: configPayload,
             admins: Array.isArray(state.admins) ? state.admins : [],
             players: Array.isArray(state.players) ? state.players : [],
@@ -3317,8 +3382,33 @@
             lossConfig: normalizeLossConfig(state.lossConfig),
             progress: state.progress && typeof state.progress === "object" ? state.progress : {}
         };
-        if(includeTimestamp) payload.updatedAt = new Date().toISOString();
+        payload = deepFirestoreSafe(payload);
+        if(includeTimestamp) {
+            payload.updatedAt = new Date().toISOString();
+            payload.cloudRevision = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
         return payload;
+    }
+
+    async function writeMainGameData(data) {
+        await ensureFirebaseAuth();
+        const safeData = deepFirestoreSafe(data);
+        const sizeKB = estimateFirestoreSizeKB(safeData);
+        if(sizeKB > 900) {
+            throw new Error(`حجم بيانات الإعدادات كبير جداً (${sizeKB}KB). احذف الصور/الصوت الملصوقة كـ data أو ارفعها بزر الرفع.`);
+        }
+        // مهم جداً: بدون merge حتى نحذف أي data قديمة كبيرة كانت عالقة في المستند وتمنع كل حفظ جديد.
+        await setDoc(DATA_DOC, safeData);
+        const check = await Promise.race([
+            getDoc(DATA_DOC),
+            timeoutPromise(7000, "انتهت مهلة التحقق من الحفظ")
+        ]);
+        if(!check.exists()) throw new Error("لم يتم العثور على مستند الحفظ بعد الكتابة");
+        const remote = check.data() || {};
+        if(safeData.cloudRevision && remote.cloudRevision !== safeData.cloudRevision) {
+            throw new Error("لم تصل النسخة الجديدة للسحابة. تحقق من Rules أو الاتصال.");
+        }
+        return true;
     }
 
     function saveLocalOnly() {
@@ -3337,7 +3427,7 @@
 
     function explainCloudError(e) {
         const msg = String(e && (e.message || e.code || e.name) || e || "خطأ غير معروف");
-        if(msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) return "صلاحيات Firestore تمنع الحفظ. افتح قواعد Firestore أو سجل دخولك بالطريقة المطلوبة.";
+        if(msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) return "صلاحيات Firestore تمنع الحفظ. الحل: Rules تسمح بالكتابة أو فعّل Anonymous Auth إذا القواعد تتطلب request.auth.";
         if(msg.includes("maximum") || msg.includes("1048487") || msg.includes("too large") || msg.includes("exceeds")) return "حجم البيانات كبير على Firestore. ارفع الصور/الصوت/الفيديو من أزرار الرفع بدل لصق data طويلة.";
         if(msg.includes("deadline") || msg.includes("timeout") || msg.includes("مهلة")) return "الاتصال بالسحابة تأخر. حفظت التعديل محلياً وسأعيد المحاولة تلقائياً.";
         if(msg.includes("unavailable") || msg.includes("network") || msg.includes("Failed to get document")) return "الشبكة أو Firebase غير متاح الآن. حفظت التعديل محلياً وسأعيد المحاولة عند رجوع الاتصال.";
@@ -3374,8 +3464,8 @@
 
         if(!options.silent) setSaveState("جارٍ رفع التعديل للسحابة...");
         saveInFlight = Promise.race([
-            setDoc(DATA_DOC, data, { merge: true }),
-            timeoutPromise(15000, "انتهت مهلة الحفظ السحابي")
+            writeMainGameData(data),
+            timeoutPromise(18000, "انتهت مهلة الحفظ السحابي")
         ])
             .then(() => {
                 lastSavedHash = hash;
@@ -3407,7 +3497,7 @@
 
     function scheduleCloudSave(delay = 250) {
         clearTimeout(saveTimer);
-        setSaveState("تم الحفظ محلياً — جاري رفع التعديل للسحابة...");
+        setSaveState("جارٍ الحفظ على السحابة...");
         saveTimer = setTimeout(() => saveGameCloud({ silent: false, force: true }), delay);
     }
 
@@ -3421,11 +3511,8 @@
     async function saveProgressCloud(options = {}) {
         try {
             await Promise.race([
-                updateDoc(DATA_DOC, {
-                    progress: state.progress,
-                    updatedAt: new Date().toISOString()
-                }),
-                timeoutPromise(15000, "انتهت مهلة حفظ التقدم")
+                writeMainGameData(cloudGameData(true)),
+                timeoutPromise(18000, "انتهت مهلة حفظ التقدم")
             ]);
             if(!options.silent) setSaveState("تم حفظ التقدم ✅");
             return true;
@@ -3510,7 +3597,8 @@
         localStorage.setItem(localDraftKey(), JSON.stringify(draft));
         if(!options.silent) setSaveState("تم حفظ مكانك محلياً — جارٍ رفعه للسحابة...");
         try {
-            await setDoc(doc(db, DRAFTS_COL, draftId()), draft, { merge: true });
+            await ensureFirebaseAuth();
+            await setDoc(doc(db, DRAFTS_COL, draftId()), deepFirestoreSafe(draft), { merge: true });
             if(!options.silent) setSaveState("تم حفظ مكانك في السحابة ✅");
             return true;
         } catch(e) {
@@ -4632,6 +4720,7 @@
     }
 
     async function uploadDataUrlToStorage(dataUrl, folder, ext) {
+        await ensureFirebaseAuth();
         const optimizedDataUrl = String(dataUrl || "").startsWith("data:image")
             ? await compressImageDataUrl(dataUrl, 640, 0.50)
             : dataUrl;
@@ -4647,6 +4736,7 @@
     }
 
     async function uploadBlobToStorage(blob, filePath) {
+        await ensureFirebaseAuth();
         const fileRef = ref(storage, filePath);
         await uploadBytes(fileRef, blob, {
             contentType: blob.type || "application/octet-stream",
@@ -4980,22 +5070,24 @@
     }
 
     async function addResultDocumentSafe(resultEntry) {
+        await ensureFirebaseAuth();
+        const cleanResult = deepFirestoreSafe(resultEntry);
         try {
-            return await addDoc(collection(db, RESULTS_COL), resultEntry);
+            return await addDoc(collection(db, RESULTS_COL), cleanResult);
         } catch(e) {
             console.warn("Full result save failed, trying emergency slim result", e);
-            const slim = {
+            const slim = deepFirestoreSafe({
                 ...resultEntry,
                 mediaFallbackWarning: "تم حفظ نسخة طارئة لأن حجم الوسائط كان كبيراً أو Storage غير مفعّل.",
                 data: resultEntry.data.map(d => ({ ...d, answer: stripHeavyMediaAnswer(d.answer) }))
-            };
+            });
             return await addDoc(collection(db, RESULTS_COL), slim);
         }
     }
 
     async function finishGame() {
         $("progress-fill").style.width = "100%";
-        setSaveState("جارٍ الحفظ السريع للنتيجة والوسائط...");
+        setSaveState("جارٍ حفظ النتيجة في السحابة...");
         const preparedAnswers = await prepareAnswersForCloud(tempAnswers);
         const reviewedAnswers = preparedAnswers.map((answer, index) => ({
             ...answer,
@@ -5125,6 +5217,7 @@
         try {
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
             const videoPath = `branding/teaser-video-${Date.now()}-${safeName}`;
+            await ensureFirebaseAuth();
             const videoRef = ref(storage, videoPath);
             await uploadBytes(videoRef, file, { contentType: file.type || "video/mp4" });
             const url = await getDownloadURL(videoRef);
@@ -5469,6 +5562,7 @@
         try {
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
             const audioPath = `branding/horror-audio-${Date.now()}-${safeName}`;
+            await ensureFirebaseAuth();
             const audioRef = ref(storage, audioPath);
             await uploadBytes(audioRef, file, { contentType: file.type || "audio/mpeg" });
             const url = await getDownloadURL(audioRef);
