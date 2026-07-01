@@ -3290,22 +3290,35 @@
         logActivity("input_change", { field: id, type, value: valueInfo }, { silentRender: true });
     }, true);
 
-    function cloudGameData() {
+    function sanitizeLargeDataUrl(value, fieldName = "") {
+        const v = String(value || "").trim();
+        if(!v) return v;
+        // Firestore يمنع المستندات الكبيرة. أي صوت/فيديو/صورة بصيغة data كبيرة لازم ترفع من زر الرفع أو تستخدم رابط مباشر.
+        if(/^data:/i.test(v) && v.length > 850000) {
+            console.warn(`Skipped huge data URL in config.${fieldName}; upload it to Storage or use a direct URL.`);
+            return "";
+        }
+        return v;
+    }
+
+    function cloudGameData(includeTimestamp = true) {
         const configPayload = { ...(state.config || {}) };
         // حماية مهمة: لا نرسل خلفية فاضية للسحابة حتى لا تنمسح الخلفية المحفوظة سابقاً.
-        if(!String(configPayload.bg || "").trim()) delete configPayload.bg;
-        if(!String(configPayload.logo || "").trim()) delete configPayload.logo;
-        if(!String(configPayload.shareImage || "").trim()) delete configPayload.shareImage;
-        return {
+        ["bg", "logo", "shareImage", "horrorAudioUrl", "teaserVideoUrl"].forEach(key => {
+            configPayload[key] = sanitizeLargeDataUrl(configPayload[key], key);
+            if(!String(configPayload[key] || "").trim()) delete configPayload[key];
+        });
+        const payload = {
             config: configPayload,
-            admins: state.admins,
-            players: state.players,
-            levels: state.levels,
-            accessRequests: state.accessRequests,
+            admins: Array.isArray(state.admins) ? state.admins : [],
+            players: Array.isArray(state.players) ? state.players : [],
+            levels: Array.isArray(state.levels) ? state.levels : defaultLevels(),
+            accessRequests: Array.isArray(state.accessRequests) ? state.accessRequests : [],
             lossConfig: normalizeLossConfig(state.lossConfig),
-            progress: state.progress,
-            updatedAt: new Date().toISOString()
+            progress: state.progress && typeof state.progress === "object" ? state.progress : {}
         };
+        if(includeTimestamp) payload.updatedAt = new Date().toISOString();
+        return payload;
     }
 
     function saveLocalOnly() {
@@ -3318,9 +3331,23 @@
         catch(e) { return `${Date.now()}`; }
     }
 
+    function timeoutPromise(ms, message) {
+        return new Promise((_, reject) => setTimeout(() => reject(new Error(message || "انتهت مهلة العملية")), ms));
+    }
+
+    function explainCloudError(e) {
+        const msg = String(e && (e.message || e.code || e.name) || e || "خطأ غير معروف");
+        if(msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) return "صلاحيات Firestore تمنع الحفظ. افتح قواعد Firestore أو سجل دخولك بالطريقة المطلوبة.";
+        if(msg.includes("maximum") || msg.includes("1048487") || msg.includes("too large") || msg.includes("exceeds")) return "حجم البيانات كبير على Firestore. ارفع الصور/الصوت/الفيديو من أزرار الرفع بدل لصق data طويلة.";
+        if(msg.includes("deadline") || msg.includes("timeout") || msg.includes("مهلة")) return "الاتصال بالسحابة تأخر. حفظت التعديل محلياً وسأعيد المحاولة تلقائياً.";
+        if(msg.includes("unavailable") || msg.includes("network") || msg.includes("Failed to get document")) return "الشبكة أو Firebase غير متاح الآن. حفظت التعديل محلياً وسأعيد المحاولة عند رجوع الاتصال.";
+        return msg.slice(0, 220);
+    }
+
     async function saveGameCloud(options = {}) {
-        const data = cloudGameData();
-        const hash = compactHash(data);
+        const stableData = cloudGameData(false);
+        const data = cloudGameData(true);
+        const hash = compactHash(stableData);
         if(hash === lastSavedHash && !options.force) {
             if(!options.silent) setSaveState("لا توجد تغييرات جديدة", false);
             return true;
@@ -3332,21 +3359,39 @@
         }
 
         if(!cloudLoaded && !options.force) {
-            if(!options.silent) setSaveState("بانتظار تحميل بيانات السحابة قبل الحفظ حتى لا يتم استبدال البيانات القديمة...");
+            if(!options.silent) setSaveState("أنتظر تحميل بيانات السحابة ثم أحفظ التعديل...");
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => saveGameCloud({ ...options, force: true }), 1000);
             return false;
         }
 
-        if(!options.silent) setSaveState("جارٍ الحفظ السريع على السحابة...");
-        saveInFlight = setDoc(DATA_DOC, data, { merge: true })
+        if(navigator && navigator.onLine === false) {
+            if(!options.silent) setSaveState("ما فيه اتصال إنترنت — حفظت محلياً وبحاول عند رجوع الشبكة");
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => saveGameCloud({ ...options, force: true }), 5000);
+            return false;
+        }
+
+        if(!options.silent) setSaveState("جارٍ رفع التعديل للسحابة...");
+        saveInFlight = Promise.race([
+            setDoc(DATA_DOC, data, { merge: true }),
+            timeoutPromise(15000, "انتهت مهلة الحفظ السحابي")
+        ])
             .then(() => {
                 lastSavedHash = hash;
                 lastLocalEditAt = 0;
+                cloudLoaded = true;
                 if(!options.silent) setSaveState("تم الحفظ للجميع ✅");
                 return true;
             })
             .catch((e) => {
-                console.warn("Cloud save failed", e);
-                if(!options.silent) setSaveState("تعذر الحفظ السحابي، البيانات محفوظة محلياً وسيُعاد المحاولة");
+                const reason = explainCloudError(e);
+                console.error("Cloud save failed", e);
+                if(!options.silent) setSaveState(`فشل الحفظ السحابي: ${reason}`);
+                if(!options.noRetry) {
+                    clearTimeout(saveTimer);
+                    saveTimer = setTimeout(() => saveGameCloud({ silent: true, force: true, noRetry: true }), 3500);
+                }
                 return false;
             })
             .finally(async () => {
@@ -3360,23 +3405,33 @@
         return saveInFlight;
     }
 
-    function scheduleCloudSave(delay = 90) {
+    function scheduleCloudSave(delay = 250) {
         clearTimeout(saveTimer);
-        setSaveState("تم الحفظ محلياً — جاري رفع التعديل للجميع...");
-        saveTimer = setTimeout(() => saveGameCloud({ silent: false }), delay);
+        setSaveState("تم الحفظ محلياً — جاري رفع التعديل للسحابة...");
+        saveTimer = setTimeout(() => saveGameCloud({ silent: false, force: true }), delay);
     }
+
+    window.addEventListener("online", () => {
+        if(lastLocalEditAt) {
+            setSaveState("رجع الاتصال — جارٍ رفع آخر تعديل...");
+            saveGameCloud({ silent: false, force: true });
+        }
+    });
 
     async function saveProgressCloud(options = {}) {
         try {
-            await updateDoc(DATA_DOC, {
-                progress: state.progress,
-                updatedAt: new Date().toISOString()
-            });
+            await Promise.race([
+                updateDoc(DATA_DOC, {
+                    progress: state.progress,
+                    updatedAt: new Date().toISOString()
+                }),
+                timeoutPromise(15000, "انتهت مهلة حفظ التقدم")
+            ]);
             if(!options.silent) setSaveState("تم حفظ التقدم ✅");
             return true;
         } catch(e) {
             console.warn("Progress save failed, fallback to full save", e);
-            return await saveGameCloud(options);
+            return await saveGameCloud({ ...options, force: true });
         }
     }
 
@@ -3567,7 +3622,7 @@
             const remoteHorrorPackApplied = applyHorrorContentPack(state);
             if(remoteData && remoteData.config && String(remoteData.config.bg || "").trim()) rememberBackgroundBackup(remoteData.config.bg);
             else await restoreMissingBackgroundFromBackup("auto");
-            lastSavedHash = compactHash(cloudGameData());
+            lastSavedHash = compactHash(cloudGameData(false));
             saveLocalOnly();
             applyVisuals();
             refreshAdminLists();
