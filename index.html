@@ -1869,6 +1869,11 @@
         .admin-solution-box { margin-top: 12px; border: 1px solid rgba(255, 200, 0, .25); background: rgba(70,45,0,.16); }
         @media (max-width:720px) { .crime-scene-3d { min-height: 390px; background-position: center center; } .crime-scene-caption { top: 10px; left: 10px; right: 10px; max-width: none; font-size: .9rem; } .evidence-pin { width: 34px; height: 34px; font-size: .85rem; } }
 
+    
+        /* تثبيت سكرول لوحة الإدارة أثناء التحديثات حتى لا يرجعك فوق */
+        #screen-admin-main { scroll-behavior: auto !important; overflow-anchor: none; }
+        #screen-admin-main * { overflow-anchor: none; }
+
     </style>
 </head>
 <body>
@@ -3159,7 +3164,10 @@
         };
         activityLogs.unshift({ localOnly: true, ...entry });
         activityLogs = activityLogs.slice(0, 350);
-        if(!options.silentRender && $("list-activity-logs")) renderActivityLogs();
+        if(!options.silentRender && $("list-activity-logs")) {
+            if(currentAdmin) preserveAdminScrollWhile(() => renderActivityLogs());
+            else renderActivityLogs();
+        }
         addDoc(collection(db, ACTIVITY_LOGS_COL), entry).catch(e => {
             console.warn("Activity log failed", e);
             localLogFallback({ ...entry, error: shortError(e) });
@@ -3488,6 +3496,7 @@
         return {
             tabId: getActiveAdminTabId(),
             scrollTop: panel.scrollTop || 0,
+            windowScrollTop: window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
             challengeLevel: $("challenge-level-select")?.value || "",
             coupleLevel: $("couple-level-select")?.value || "",
             resultPlayer: $("result-filter-player")?.value || "",
@@ -3507,18 +3516,33 @@
 
     function restoreAdminUiState(restore) {
         if(!restore) return;
-        requestAnimationFrame(() => {
+        const applyRestore = () => {
             restore.openDetails?.forEach(id => {
                 const el = $(id);
                 if(el) el.open = true;
             });
             const panel = $("screen-admin-main");
             if(panel) panel.scrollTop = restore.scrollTop || 0;
+            const y = Number(restore.windowScrollTop || 0);
+            if(y > 0) {
+                try { window.scrollTo({ top: y, left: 0, behavior: "auto" }); } catch(e) { window.scrollTo(0, y); }
+            }
             if(restore.focusId && $(restore.focusId)) {
                 try { $(restore.focusId).focus({ preventScroll: true }); } catch(e) {}
             }
+        };
+        requestAnimationFrame(() => {
+            applyRestore();
+            setTimeout(applyRestore, 60);
+            setTimeout(applyRestore, 180);
             adminUiRestore = null;
         });
+    }
+
+    function preserveAdminScrollWhile(callback) {
+        const restore = captureAdminUiState();
+        callback();
+        restoreAdminUiState(restore);
     }
 
     function syncAndSave(pushCloud = true) {
@@ -3561,9 +3585,11 @@
     onSnapshot(query(collection(db, RESULTS_COL), orderBy("isoTime", "desc")), (snap) => {
         results = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
         if(currentAdmin) {
-            renderDashboard();
-            renderResults();
-            renderProgressList();
+            preserveAdminScrollWhile(() => {
+                renderDashboard();
+                renderResults();
+                renderProgressList();
+            });
         }
         if(currentUser) {
             showLatestPlayerReviewNotice();
@@ -3578,8 +3604,10 @@
             if(Array.isArray(local) && local.length) activityLogs = [...local.map(x => ({ localOnly: true, ...x })), ...activityLogs];
         } catch(e) {}
         if(currentAdmin) {
-            renderDashboard();
-            renderActivityLogs();
+            preserveAdminScrollWhile(() => {
+                renderDashboard();
+                renderActivityLogs();
+            });
         }
     }, (err) => console.warn("Activity logs listener error", err));
 
@@ -5095,7 +5123,7 @@
         reem: {
             name: "ريم العلي — مساعدة الضحية",
             body: "تقول ريم إنها غادرت المكتب 01:50 ولم تعد، لكنها كانت تعرف رمز الخزنة وتملك بطاقة دخول الأرشيف، كما أنها المسؤولة عن إعداد ملف التبرعات الذي كان الضحية يراجعه. الضغط المالي عليها شديد، وهناك تحويلات ناقصة في ملف الجمعية مرتبطة بحسابات كانت تديرها.",
-            note: "الاشتباه الأقوى: دافع مالي واضح + فرصة دخول مؤكدة + آثار مادية متطابقة.",
+            note: "ملف هذا الشخص يحتاج مقارنة دقيقة مع الأدلة، ولا تكفي القراءة السريعة للحكم عليه.",
             statement: [
                 "غادرت قبل الثانية إلا عشر ولم أرجع إطلاقاً.",
                 "لا أعرف شيئاً عن انقطاع الكاميرات.",
@@ -5112,7 +5140,7 @@
         majed: {
             name: "ماجد السالم — أخ الضحية",
             body: "دخل على نادر في نقاش حاد بخصوص الميراث. غاضب، لكنه غادر على الأغلب قرب 02:15، وكاميرا المصعد التقطته 02:18 خارج الدور. بصمته على الساعة موجودة لأنها هدية قديمة منه للضحية، لكنه لا يملك صلة بملف التبرعات.",
-            note: "لديه دافع عاطفي وغضب ظاهر، لكنه يفتقد الرابط المالي وطباعة الحذاء والدخول السري.",
+            note: "لديه دافع ظاهر، لكن الحكم عليه يحتاج مقارنة زمن الخروج مع الأدلة المادية.",
             statement: [
                 "كنت غاضباً نعم، لكنني خرجت وتركته حياً.",
                 "رأيت طرف وشاح أحمر قرب الممر الخلفي وأنا متجه للمصعد.",
@@ -5128,7 +5156,7 @@
         sultan: {
             name: "سلطان — حارس المبنى",
             body: "كان مسؤولاً عن متابعة الكاميرات والمولد. معه مفتاح عام للممرات، لكنه لا يملك سبباً مباشراً لقتل نادر. بلاغ الصيانة المسجل بصوته عند 02:09 يمنحه غطاءً جزئياً، لكنه يظل مشتبهاً بسبب معرفته بالمداخل الخلفية.",
-            note: "تقصير أمني محتمل، لا دليل قتل مباشر. دوره محتمل كعامل سهّل الظرف لا كجاني أساسي.",
+            note: "وجوده في المبنى مهم، لكن دوره الحقيقي لا يتضح إلا عند ربط الكاميرات وسجل الأبواب.",
             statement: [
                 "الكاميرات انقطعت بسبب المولد وكنت عند غرفة الخدمة.",
                 "لم أدخل مكتب نادر تلك الليلة.",
@@ -5144,7 +5172,7 @@
         layan: {
             name: "ليان — صحفية كانت تتابع التقرير",
             body: "تبحث عن قصة فساد في الجمعية وتريد نشر التقرير لا إخفاءه. اتصالها بنادر 02:20 بلا رد، والبريد الصوتي يحتوي صدى شارع لا ممر داخلي. وجودها مهم لأنها تعرف قيمة الملف المفقود لكنها ليست الأقرب للتنفيذ.",
-            note: "منفعتها في كشف الحقيقة، لا دفنها. تصلح كشخص يملك معلومة لا كقاتل.",
+            note: "وجودها مرتبط بالملف الصحفي، لكن وزن دورها يعتمد على ما تقوله الأدلة التقنية.",
             statement: [
                 "كنت أنتظر من نادر نسخة من التقرير قبل الفجر.",
                 "اتصلت 02:20 ولم يجب.",
@@ -5160,7 +5188,7 @@
         fahad: {
             name: "فهد — سائق توصيل الصندوق",
             body: "سلّم صندوقاً أسود للاستقبال 01:32 ثم غادر 01:41. الصندوق كان جزءاً من لعبة تخويف أو رسالة ضغط، لكنه لا يرتبط مباشرة بوقت الجريمة. لا يعرف نادر شخصياً ولا يظهر في أي سجل داخلي بعد خروجه.",
-            note: "يضيف غموضاً للقصة لكنه يسبق الجريمة بوقت كافٍ ولا يملك صلة مقنعة بالملف أو بالحيلة.",
+            note: "وجوده يفتح احتمالاً جانبياً، لكن لا تحسم أمره قبل مراجعة توقيت دخوله وخروجه.",
             statement: [
                 "وصلت الصندوق للاستقبال وخرجت فوراً تقريباً.",
                 "لا أعرف الضحية، أنا مجرد موصل.",
@@ -5245,7 +5273,7 @@
                 </div>
                 <div id="forensic-tab-suspects" class="forensic-tab">
                     <div class="suspect-btns">${Object.entries(FORENSIC_SUSPECTS).map(([id, s]) => `<button type="button" class="small secondary" onclick="showForensicSuspect('${id}')">${esc(s.name.split('—')[0].trim())}</button>`).join("")}</div>
-                    <div id="forensic-suspect-box" class="case-card interrogation-box"><h4>اختر شخصاً للتحقيق</h4><p>سترى وصفاً مختصراً، ثم أقوال الشخص، ثم نقاط التناقض التي يجب أن تفكر فيها. لا تكتفِ بالدافع فقط؛ اسأل: من لديه فرصة؟ من ينسجم مع الزمن؟ ومن تنسفه القرائن المادية؟</p></div>
+                    <div id="forensic-suspect-box" class="case-card interrogation-box"><h4>اختر شخصاً للتحقيق</h4><p>سترى وصفاً مختصراً وأقوال الشخص فقط. لا يوجد هنا جواب مباشر؛ قارِن كلامه مع الأدلة والخط الزمني ومسرح الجريمة بنفسك.</p></div>
                 </div>
                 <div id="forensic-tab-timeline" class="forensic-tab">
                     <div class="case-grid">
@@ -5326,7 +5354,24 @@
     window.showForensicSuspect = (id) => {
         const s = FORENSIC_SUSPECTS[id];
         if(!s || !$("forensic-suspect-box")) return;
-        $("forensic-suspect-box").innerHTML = `<h4>${esc(s.name)}</h4><p>${esc(s.body)}</p><div class="forensic-detail"><b>الخلاصة التحقيقـية:</b> ${esc(s.note)}</div><div class="case-grid" style="margin-top:12px;"><div class="case-card"><h4>أقوال الشخص</h4><ul>${(s.statement || []).map(line => `<li>${esc(line)}</li>`).join("")}</ul></div><div class="case-card"><h4>نقاط التناقض والاشتباه</h4><ul>${(s.contradictions || []).map(line => `<li>${esc(line)}</li>`).join("")}</ul></div></div>`;
+        $("forensic-suspect-box").innerHTML = `<h4>${esc(s.name)}</h4>
+            <p>${esc(s.body)}</p>
+            <div class="case-grid" style="margin-top:12px;">
+                <div class="case-card">
+                    <h4>أقوال الشخص</h4>
+                    <ul>${(s.statement || []).map(line => `<li>${esc(line)}</li>`).join("")}</ul>
+                </div>
+                <div class="case-card">
+                    <h4>أسئلة المحقق</h4>
+                    <ul>
+                        <li>هل كلامه يطابق الخط الزمني؟</li>
+                        <li>هل يوجد دليل مادي يثبت وجوده في المكتب؟</li>
+                        <li>هل دافعه أقوى من فرصة دخوله؟</li>
+                        <li>هل يوجد شيء قاله يحتاج مراجعة مع الأدلة؟</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="forensic-detail"><b>تنبيه:</b> لا تعتمد على كلام المشتبه فقط. ارجع لمسرح الجريمة وتقارير المختبر والخط الزمني واستنتج بنفسك.</div>`;
         logActivity("forensic_suspect_open", { suspect: s.name }, { silentRender: true });
     };
 
