@@ -2074,6 +2074,13 @@
             <div class="admin-section">
                 <h3>☁️ قاعدة البيانات</h3>
                 <p class="hint">كل تعديل تحفظه هنا ينتقل مباشرة لكل من فتح الموقع، ويبقى محفوظاً داخل Firebase حتى لو أغلقت الموقع ورجعت لاحقاً.</p>
+                <div class="grid grid-2">
+                    <button type="button" class="blue" onclick="testCloudConnection()">اختبار السحابة الآن</button>
+                    <button type="button" class="secondary" onclick="showFirebaseRulesHelp()">عرض قواعد Firebase المطلوبة</button>
+                </div>
+                <div id="cloud-test-status" class="review-panel" style="margin-top:10px;">
+                    <b>حالة السحابة:</b> اضغط اختبار السحابة لمعرفة السبب الحقيقي إذا الحفظ لا يعمل.
+                </div>
             </div>
         </div>
 
@@ -3129,12 +3136,14 @@
         if(saveStateHideTimer) clearTimeout(saveStateHideTimer);
         box.textContent = text;
         box.style.display = show ? "block" : "none";
-        const shouldAutoHide = show && (/تم|✅|لا توجد تغييرات/.test(String(text || "")));
-        if(shouldAutoHide) {
+        const msg = String(text || "");
+        const shouldAutoHide = show && (/تم|✅|لا توجد تغييرات/.test(msg));
+        const shouldSafetyHide = show && (/جارٍ|أنتظر|اختبار|رفع|الحفظ/.test(msg));
+        if(shouldAutoHide || shouldSafetyHide) {
             saveStateHideTimer = setTimeout(() => {
                 box.style.display = "none";
                 saveStateHideTimer = null;
-            }, 1500);
+            }, shouldAutoHide ? 1500 : 12000);
         }
     }
 
@@ -3201,7 +3210,7 @@
             if(currentAdmin) preserveAdminScrollWhile(() => renderActivityLogs());
             else renderActivityLogs();
         }
-        addDoc(collection(db, ACTIVITY_LOGS_COL), entry).catch(e => {
+        addDocCloud(ACTIVITY_LOGS_COL, entry).catch(e => {
             console.warn("Activity log failed", e);
             localLogFallback({ ...entry, error: shortError(e) });
         });
@@ -3391,22 +3400,37 @@
     }
 
     async function writeMainGameData(data) {
-        await ensureFirebaseAuth();
         const safeData = deepFirestoreSafe(data);
         const sizeKB = estimateFirestoreSizeKB(safeData);
         if(sizeKB > 900) {
             throw new Error(`حجم بيانات الإعدادات كبير جداً (${sizeKB}KB). احذف الصور/الصوت الملصوقة كـ data أو ارفعها بزر الرفع.`);
         }
-        // مهم جداً: بدون merge حتى نحذف أي data قديمة كبيرة كانت عالقة في المستند وتمنع كل حفظ جديد.
-        await setDoc(DATA_DOC, safeData);
-        const check = await Promise.race([
-            getDoc(DATA_DOC),
-            timeoutPromise(7000, "انتهت مهلة التحقق من الحفظ")
-        ]);
-        if(!check.exists()) throw new Error("لم يتم العثور على مستند الحفظ بعد الكتابة");
-        const remote = check.data() || {};
+
+        let sdkError = null;
+        try {
+            await ensureFirebaseAuth();
+            // مهم جداً: بدون merge حتى نحذف أي data قديمة كبيرة كانت عالقة في المستند وتمنع كل حفظ جديد.
+            await Promise.race([
+                setDoc(DATA_DOC, safeData),
+                timeoutPromise(9000, "انتهت مهلة كتابة SDK")
+            ]);
+        } catch(e) {
+            sdkError = e;
+            console.warn("SDK main save failed; trying REST fallback", e);
+            await restSetDoc("siteConfig/mysteryGameData", safeData);
+        }
+
+        let remote = null;
+        try {
+            remote = await Promise.race([readMainCloudAny(), timeoutPromise(9000, "انتهت مهلة التحقق من الحفظ")]);
+        } catch(e) {
+            if(sdkError) throw e;
+            throw new Error(`تمت محاولة الكتابة لكن فشل التحقق: ${e.message || e}`);
+        }
+
+        if(!remote) throw new Error("لم يتم العثور على مستند الحفظ بعد الكتابة");
         if(safeData.cloudRevision && remote.cloudRevision !== safeData.cloudRevision) {
-            throw new Error("لم تصل النسخة الجديدة للسحابة. تحقق من Rules أو الاتصال.");
+            throw new Error("لم تصل النسخة الجديدة للسحابة. غالباً Rules تمنع الكتابة أو يوجد تأخير/مشروع مختلف.");
         }
         return true;
     }
@@ -3425,9 +3449,161 @@
         return new Promise((_, reject) => setTimeout(() => reject(new Error(message || "انتهت مهلة العملية")), ms));
     }
 
+    const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+
+    function restDocPath(path = "") {
+        return String(path || "").split("/").map(encodeURIComponent).join("/");
+    }
+
+    async function firebaseAuthHeaders() {
+        const headers = { "Content-Type": "application/json" };
+        try {
+            if(auth.currentUser) {
+                const token = await auth.currentUser.getIdToken(false);
+                if(token) headers.Authorization = `Bearer ${token}`;
+            }
+        } catch(e) {}
+        return headers;
+    }
+
+    function toFsValue(value) {
+        if(value === undefined || value === null) return { nullValue: null };
+        if(typeof value === "string") return { stringValue: value };
+        if(typeof value === "boolean") return { booleanValue: value };
+        if(typeof value === "number") {
+            return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+        }
+        if(Array.isArray(value)) return { arrayValue: { values: value.map(toFsValue) } };
+        if(typeof value === "object") {
+            const fields = {};
+            Object.entries(value).forEach(([k, v]) => {
+                if(v !== undefined) fields[k] = toFsValue(v);
+            });
+            return { mapValue: { fields } };
+        }
+        return { stringValue: String(value) };
+    }
+
+    function toFsFields(obj = {}) {
+        const fields = {};
+        Object.entries(obj || {}).forEach(([k, v]) => {
+            if(v !== undefined) fields[k] = toFsValue(v);
+        });
+        return fields;
+    }
+
+    function fromFsValue(v) {
+        if(!v || typeof v !== "object") return null;
+        if("nullValue" in v) return null;
+        if("stringValue" in v) return v.stringValue;
+        if("booleanValue" in v) return v.booleanValue;
+        if("integerValue" in v) return Number(v.integerValue || 0);
+        if("doubleValue" in v) return Number(v.doubleValue || 0);
+        if("timestampValue" in v) return v.timestampValue;
+        if("arrayValue" in v) return (v.arrayValue.values || []).map(fromFsValue);
+        if("mapValue" in v) return fromFsFields(v.mapValue.fields || {});
+        return null;
+    }
+
+    function fromFsFields(fields = {}) {
+        const out = {};
+        Object.entries(fields || {}).forEach(([k, v]) => out[k] = fromFsValue(v));
+        return out;
+    }
+
+    async function restSetDoc(path, data) {
+        await ensureFirebaseAuth();
+        const headers = await firebaseAuthHeaders();
+        const res = await fetch(`${FIRESTORE_REST_BASE}/${restDocPath(path)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ fields: toFsFields(data) })
+        });
+        const body = await res.json().catch(() => ({}));
+        if(!res.ok) {
+            const message = body?.error?.message || body?.error?.status || `REST write failed ${res.status}`;
+            const err = new Error(message);
+            err.restStatus = res.status;
+            err.restBody = body;
+            throw err;
+        }
+        return fromFsFields(body.fields || {});
+    }
+
+    async function restGetDoc(path) {
+        await ensureFirebaseAuth();
+        const headers = await firebaseAuthHeaders();
+        const res = await fetch(`${FIRESTORE_REST_BASE}/${restDocPath(path)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`, { headers });
+        if(res.status === 404) return null;
+        const body = await res.json().catch(() => ({}));
+        if(!res.ok) {
+            const message = body?.error?.message || body?.error?.status || `REST read failed ${res.status}`;
+            const err = new Error(message);
+            err.restStatus = res.status;
+            err.restBody = body;
+            throw err;
+        }
+        return fromFsFields(body.fields || {});
+    }
+
+    async function restAddDoc(collectionPath, data) {
+        await ensureFirebaseAuth();
+        const headers = await firebaseAuthHeaders();
+        const res = await fetch(`${FIRESTORE_REST_BASE}/${restDocPath(collectionPath)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ fields: toFsFields(data) })
+        });
+        const body = await res.json().catch(() => ({}));
+        if(!res.ok) {
+            const message = body?.error?.message || body?.error?.status || `REST add failed ${res.status}`;
+            const err = new Error(message);
+            err.restStatus = res.status;
+            err.restBody = body;
+            throw err;
+        }
+        return { id: String(body.name || "").split("/").pop(), path: body.name, via: "rest" };
+    }
+
+    async function addDocCloud(collectionPath, data) {
+        const safe = deepFirestoreSafe(data);
+        try {
+            await ensureFirebaseAuth();
+            return await addDoc(collection(db, collectionPath), safe);
+        } catch(sdkErr) {
+            console.warn("SDK addDoc failed; trying REST fallback", sdkErr);
+            return await restAddDoc(collectionPath, safe);
+        }
+    }
+
+    async function setDocCloud(docPath, data, options = {}) {
+        const safe = deepFirestoreSafe(data);
+        try {
+            await ensureFirebaseAuth();
+            await setDoc(doc(db, docPath), safe, options);
+            return true;
+        } catch(sdkErr) {
+            console.warn("SDK setDoc failed; trying REST fallback", sdkErr);
+            await restSetDoc(docPath, safe);
+            return true;
+        }
+    }
+
+    async function readMainCloudAny() {
+        try {
+            const snap = await Promise.race([getDoc(DATA_DOC), timeoutPromise(5000, "SDK read timeout")]);
+            if(snap.exists()) return snap.data();
+        } catch(e) {
+            console.warn("SDK read main doc failed; trying REST fallback", e);
+        }
+        return await restGetDoc("siteConfig/mysteryGameData");
+    }
+
     function explainCloudError(e) {
         const msg = String(e && (e.message || e.code || e.name) || e || "خطأ غير معروف");
-        if(msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) return "صلاحيات Firestore تمنع الحفظ. الحل: Rules تسمح بالكتابة أو فعّل Anonymous Auth إذا القواعد تتطلب request.auth.";
+        if(msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions") || msg.includes("PERMISSION_DENIED")) return "صلاحيات Firestore تمنع الحفظ. افتح Firebase > Firestore Database > Rules وضع القواعد المرسلة من زر قواعد Firebase."; 
+        if(msg.includes("NOT_FOUND") || msg.includes("Cloud Firestore API has not been used") || msg.includes("database") && msg.includes("not found")) return "قاعدة Firestore غير مفعلة أو المشروع/الداتابيس غير موجود. افتح Firebase Console وأنشئ Firestore Database على نفس المشروع."; 
+        if(msg.includes("auth/unauthorized-domain")) return "دومين الموقع غير مسموح في Firebase Auth. أضف دومين موقعك من Authentication > Settings > Authorized domains أو افتح Anonymous Auth.";
         if(msg.includes("maximum") || msg.includes("1048487") || msg.includes("too large") || msg.includes("exceeds")) return "حجم البيانات كبير على Firestore. ارفع الصور/الصوت/الفيديو من أزرار الرفع بدل لصق data طويلة.";
         if(msg.includes("deadline") || msg.includes("timeout") || msg.includes("مهلة")) return "الاتصال بالسحابة تأخر. حفظت التعديل محلياً وسأعيد المحاولة تلقائياً.";
         if(msg.includes("unavailable") || msg.includes("network") || msg.includes("Failed to get document")) return "الشبكة أو Firebase غير متاح الآن. حفظت التعديل محلياً وسأعيد المحاولة عند رجوع الاتصال.";
@@ -3597,8 +3773,7 @@
         localStorage.setItem(localDraftKey(), JSON.stringify(draft));
         if(!options.silent) setSaveState("تم حفظ مكانك محلياً — جارٍ رفعه للسحابة...");
         try {
-            await ensureFirebaseAuth();
-            await setDoc(doc(db, DRAFTS_COL, draftId()), deepFirestoreSafe(draft), { merge: true });
+            await setDocCloud(`${DRAFTS_COL}/${draftId()}`, deepFirestoreSafe(draft), { merge: true });
             if(!options.silent) setSaveState("تم حفظ مكانك في السحابة ✅");
             return true;
         } catch(e) {
@@ -3753,6 +3928,77 @@
             });
         }
     }, (err) => console.warn("Activity logs listener error", err));
+
+    async function loadCloudOnceFallback(showStatus = false) {
+        try {
+            const remoteData = await restGetDoc("siteConfig/mysteryGameData");
+            if(remoteData) {
+                state = sanitizeBrandingInState(migrateState(remoteData));
+                applyHorrorContentPack(state);
+                lastSavedHash = compactHash(cloudGameData(false));
+                cloudLoaded = true;
+                saveLocalOnly();
+                applyVisuals();
+                refreshAdminLists();
+                if(showStatus) setSaveState("تم تحميل بيانات السحابة بنجاح ✅");
+                return true;
+            }
+            cloudLoaded = true;
+            await saveGameCloud({ silent: true, force: true });
+            return true;
+        } catch(e) {
+            console.warn("Cloud fallback load failed", e);
+            cloudLoaded = true;
+            if(showStatus) setSaveState(`فشل تحميل السحابة: ${explainCloudError(e)}`);
+            return false;
+        }
+    }
+
+    setTimeout(() => {
+        if(!cloudLoaded) loadCloudOnceFallback(false);
+    }, 2800);
+
+    window.testCloudConnection = async () => {
+        const box = $("cloud-test-status");
+        if(box) box.innerHTML = "⏳ جارٍ اختبار القراءة والكتابة في Firebase...";
+        setSaveState("جارٍ اختبار السحابة...");
+        try {
+            const payload = cloudGameData(true);
+            payload.cloudTestAt = new Date().toISOString();
+            await writeMainGameData(payload);
+            const remote = await readMainCloudAny();
+            if(!remote || remote.cloudTestAt !== payload.cloudTestAt) throw new Error("الكتابة تمت لكن القراءة لم ترجع نفس رقم الاختبار");
+            cloudLoaded = true;
+            if(box) box.innerHTML = `<b style="color:#8fffc0;">✅ السحابة شغالة</b><br>آخر اختبار: ${esc(new Date().toLocaleString("ar-SA"))}<br><span class="hint">إذا فتحت الموقع من جهاز ثاني سيصل نفس التعديل.</span>`;
+            setSaveState("السحابة شغالة وتم التحقق ✅");
+        } catch(e) {
+            const reason = explainCloudError(e);
+            if(box) box.innerHTML = `<b style="color:#ff8b9a;">❌ السحابة لا تحفظ</b><br>${esc(reason)}<br><button type="button" class="secondary small" onclick="showFirebaseRulesHelp()">عرض القواعد المطلوبة</button>`;
+            setSaveState(`فشل اختبار السحابة: ${reason}`);
+            console.error("Cloud test failed", e);
+        }
+    };
+
+    window.showFirebaseRulesHelp = () => {
+        const rules = `rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /siteConfig/{docId} {
+      allow read, write: if true;
+
+      match /{subCollection}/{subDoc} {
+        allow read, write: if true;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}`;
+        alert("انسخ هذه القواعد وضعها في Firebase > Firestore Database > Rules ثم Publish:\n\n" + rules);
+    };
 
     function setMetaContent(selector, value) {
         const el = document.querySelector(selector);
@@ -5073,7 +5319,7 @@
         await ensureFirebaseAuth();
         const cleanResult = deepFirestoreSafe(resultEntry);
         try {
-            return await addDoc(collection(db, RESULTS_COL), cleanResult);
+            return await addDocCloud(RESULTS_COL, cleanResult);
         } catch(e) {
             console.warn("Full result save failed, trying emergency slim result", e);
             const slim = deepFirestoreSafe({
@@ -5081,7 +5327,7 @@
                 mediaFallbackWarning: "تم حفظ نسخة طارئة لأن حجم الوسائط كان كبيراً أو Storage غير مفعّل.",
                 data: resultEntry.data.map(d => ({ ...d, answer: stripHeavyMediaAnswer(d.answer) }))
             });
-            return await addDoc(collection(db, RESULTS_COL), slim);
+            return await addDocCloud(RESULTS_COL, slim);
         }
     }
 
